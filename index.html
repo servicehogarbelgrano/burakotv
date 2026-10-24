@@ -22,6 +22,8 @@ input{font:inherit;padding:12px;border-radius:10px;border:0;width:100%;margin:8p
 .pz{position:relative;height:340px;background:#00000030;border:3px dashed #ffffff40;border-radius:16px;margin:8px 0}
 .pz .t{position:absolute;box-shadow:0 2px 5px #0006}
 .pzp{display:flex;flex-wrap:wrap;max-height:150px;overflow-y:auto}
+.t{transition:margin .15s}.t.gap{margin-left:36px}
+.meld.over,.rk.over{background:#ffd54f40}
 </style></head><body>
 <div id="root"></div><div id="toast"></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -66,7 +68,7 @@ function meldInfo(ids){
 }
 
 // ---- lógica (corre en el celular, dentro de una transacción) ----
-const act=fn=>db.runTransaction(async t=>{const sn=await t.get(ref);const s=sn.data();fn(s);t.set(ref,s)}).catch(e=>toast(e.message||'Error'));
+const act=(fn,opt=true)=>{if(opt&&S){try{const l=JSON.parse(JSON.stringify(S));fn(l);render(l)}catch(e){toast(e.message||'Error');return}}return db.runTransaction(async t=>{const sn=await t.get(ref);const s=sn.data();fn(s);t.set(ref,s)}).catch(e=>toast(e.message||'Error'))};
 const idx=s=>s.players.findIndex(p=>p.uid===me);
 const hasCan=(s,tm)=>s.melds.some(m=>m.team===tm&&m.ids.length>=7);
 function turnChk(s){const i=idx(s);if(i<0||s.turn!==i)throw Error('No es tu turno');return i}
@@ -98,8 +100,8 @@ function deal(s){
 }
 const A={
  join(name){act(s=>{if(s.phase!=='lobby')throw Error('Ya empezó');if(idx(s)<0){if(s.players.length>=4)throw Error('Sala llena');s.players.push({uid:me,name})}})},
- start(){act(s=>{const n=s.players.length;if(n!==2&&n!==4)throw Error('Se juega de a 2 o de a 4');s.scores=[0,0];s.hand=0;deal(s)})},
- again(){act(s=>{if(s.phase==='over')s.scores=[0,0];deal(s)})},
+ start(){act(s=>{const n=s.players.length;if(n!==2&&n!==4)throw Error('Se juega de a 2 o de a 4');s.scores=[0,0];s.hand=0;deal(s)},false)},
+ again(){act(s=>{if(s.phase==='over')s.scores=[0,0];deal(s)},false)},
  draw(){act(s=>{const i=turnChk(s);if(s.drawn)throw Error('Ya robaste');
   if(!s.deck.length)return endHand(s,null);
   s.hands[me].push(s.deck.pop());s.drawn=true;s.msg=s.players[i].name+' robó del mazo'})},
@@ -140,21 +142,28 @@ function syncRack(h){RK.a=RK.a.filter(x=>h.includes(x));RK.b=RK.b.filter(x=>h.in
  h.forEach(x=>{if(!RK.a.includes(x)&&!RK.b.includes(x))RK.a.push(x)});localStorage.rk=JSON.stringify(RK)}
 function sortRack(){RK.a=sortR(RK.a);RK.b=sortR(RK.b);localStorage.rk=JSON.stringify(RK);phone(S)}
 function addTo(id){const i=idx(S);if(S.turn!==i||!S.drawn||!sel.size)return toast('Elegí fichas del atril y después tocá el juego');A.add(id,[...sel])}
+function hit(e,el){el.style.visibility='hidden';const u=document.elementFromPoint(e.clientX,e.clientY);el.style.visibility='';return u}
+function clearHi(){document.querySelectorAll('.gap,.over').forEach(x=>x.classList.remove('gap','over'))}
 function bindRack(){
  const r=$('rack');
  r.onpointerdown=e=>{const el=e.target.closest('.t');if(!el)return;drag={el,id:+el.dataset.i,x:e.clientX,y:e.clientY,moved:false};el.setPointerCapture(e.pointerId)};
  r.onpointermove=e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
   if(!drag.moved&&Math.hypot(dx,dy)>8)drag.moved=true;
-  if(drag.moved){drag.el.style.transform=`translate(${dx}px,${dy}px)`;drag.el.style.zIndex=9}};
- r.onpointerup=e=>{if(!drag)return;const d=drag;drag=null;
+  if(!drag.moved)return;
+  drag.el.style.transform=`translate(${dx}px,${dy}px) scale(1.15)`;drag.el.style.zIndex=9;drag.el.style.transition='none';
+  clearHi();const u=hit(e,drag.el);if(!u)return;
+  const tt=u.closest('.t'),m=u.closest('.meld'),row=u.closest('.rk');
+  if(tt&&tt!==drag.el)tt.classList.add('gap');
+  if(m)m.classList.add('over');else if(row)row.classList.add('over')};
+ r.onpointerup=e=>{if(!drag)return;const d=drag;drag=null;clearHi();
   if(!d.moved){sel.has(d.id)?sel.delete(d.id):sel.add(d.id);return phone(S)}
-  d.el.style.display='none';const u=document.elementFromPoint(e.clientX,e.clientY);d.el.style.display='';
-  const row=u&&u.closest('.rk'),tt=u&&u.closest('.t');
+  const u=hit(e,d.el),m=u&&u.closest('.meld'),row=u&&u.closest('.rk'),tt=u&&u.closest('.t');
+  if(m){A.add(+m.dataset.m,sel.has(d.id)?[...sel]:[d.id]);return phone(S)}
   if(row){RK.a=RK.a.filter(x=>x!==d.id);RK.b=RK.b.filter(x=>x!==d.id);
    const L=RK[row.dataset.r];const k=tt?L.indexOf(+tt.dataset.i):-1;k>=0?L.splice(k,0,d.id):L.push(d.id);
    localStorage.rk=JSON.stringify(RK)}
   phone(S)};
- r.onpointercancel=()=>{drag=null;phone(S)};
+ r.onpointercancel=()=>{drag=null;clearHi();phone(S)};
 }
 function phone(s){
  const i=idx(s);
@@ -167,7 +176,7 @@ function phone(s){
  let end='';
  if(s.phase!=='play')end=`<div class="card"><h3>${s.phase==='over'?'¡Fin del juego!':'Fin de la mano'}</h3>${s.result.map(r=>`<p>${teamName(s,r.team)}: ${r.pts>=0?'+':''}${r.pts} → <b>${r.total}</b></p>`).join('')}<button onclick="A.again()">${s.phase==='over'?'Nueva partida':'Siguiente mano'}</button></div>`;
  const can=mine&&s.drawn&&sel.size>0;
- const my=s.melds.filter(m=>m.team===tm).map(m=>`<div class="card sm meld ${can?'tap':''}" style="margin:4px 0" onclick="addTo(${m.id})">${m.ids.map(x=>T(x)).join('')}</div>`).join('');
+ const my=s.melds.filter(m=>m.team===tm).map(m=>`<div class="card sm meld ${can?'tap':''}" data-m="${m.id}" style="margin:4px 0" onclick="addTo(${m.id})">${m.ids.map(x=>T(x)).join('')}</div>`).join('');
  root.innerHTML=`<div style="padding:12px;padding-bottom:40px">
  <div class="msg">${s.phase==='play'?(mine?(s.drawn?'Tu turno: bajá o descartá':'Tu turno: robá'):'Juega '+s.players[s.turn].name):'—'}</div>
  <small>${teamName(s,0)}: ${s.scores[0]} · ${teamName(s,1)}: ${s.scores[1]} · Mazo ${s.deck.length} · Pozo ${s.pozo.length} · Muerto ${s.mt[tm]?'ok':'sin levantar'}</small>${end}

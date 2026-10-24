@@ -48,7 +48,7 @@ input{font:inherit;padding:12px;border-radius:10px;border:0;width:100%;margin:8p
     <button id="hostBtn">Crear sala en esta pantalla (TV)</button>
     <button id="showJoinBtn" class="blue">Entrar desde un celular</button>
     <div id="joinBox" class="stack hidden">
-      <label>Código de sala<input id="cd" maxlength="4" placeholder="AB12" autocomplete="off" style="text-transform:uppercase;text-align:center;font-size:22px"></label>
+      <label>Código de sala<input id="cd" maxlength="6" placeholder="AB12CD" autocomplete="off" style="text-transform:uppercase;text-align:center;font-size:22px"></label>
       <button id="joinBtn" class="good">Entrar a la sala</button>
     </div>
     <button id="rulesBtn" class="secondary">📖 Reglas del juego</button>
@@ -243,11 +243,11 @@ function bajar(){A.meld([...sel])}
 function descartar(){A.disc([...sel][0])}
 async function makeRoom(){
  $('home').classList.add('hidden');
- const code=Math.random().toString(36).slice(2,6).toUpperCase();ref=doc(db,'burako',code);
- try{await setDoc(ref,{phase:'lobby',players:[],scores:[0,0],melds:[],msg:''})}
+ const AL='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',code=Array.from(crypto.getRandomValues(new Uint8Array(6)),b=>AL[b%32]).join('');ref=doc(db,'burako',code);
+ try{await setDoc(ref,{hostId:me,phase:'lobby',players:[],scores:[0,0],melds:[],msg:''})}
  catch(e){root.innerHTML='<p style="padding:20px;font-size:20px">⚠️ No se pudo crear la sala: '+e.message+'<br><small>Revisá las reglas de Firestore (tienen que permitir la colección "burako").</small></p>';return}
  onSnapshot(ref,sn=>sn.exists()&&render(sn.data()),e=>toast(e.message))}
-function goRoom(){const c=($('cd').value||'').trim().toUpperCase();if(c.length<4)return toast('Poné el código de 4 letras');location.href=location.pathname+'?r='+c}
+function goRoom(){const c=($('cd').value||'').trim().toUpperCase();if(c.length<6)return toast('Poné el código de 6 caracteres');location.href=location.pathname+'?r='+c}
 // ---- reglas con imágenes y voz ----
 const tid=(n,c)=>c*13+n-1,J=104;
 const run=(a,b,c)=>Array.from({length:b-a+1},(_,k)=>tid(a+k,c));

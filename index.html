@@ -232,8 +232,8 @@ function phone(s){
 }
 function render(s){S=s;$('home').classList.add('hidden');if(drag&&drag.moved)return;
  if(!new URLSearchParams(location.search).get('r')){
-  if(PV&&s.phase==='play'){const n=x=>x.melds.reduce((a,m)=>a+m.ids.length,0);
-   const ml=s.melds.length>PV.melds.length||n(s)>n(PV),dr=s.pozo.length>PV.pozo.length;
+  if(PV&&PV.phase==='play'&&s.phase==='play'){const n=x=>(x.melds||[]).reduce((a,m)=>a+m.ids.length,0);
+   const ml=n(s)>n(PV),dr=(s.pozo||[]).length>(PV.pozo||[]).length;
    if(ml)sndMeld();if(dr)setTimeout(sndDrop,ml?500:0)}
   PV=s}
 new URLSearchParams(location.search).get('r')?phone(s):tv(s)}

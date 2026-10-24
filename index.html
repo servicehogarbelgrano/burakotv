@@ -262,15 +262,23 @@ const RP=[
 {t:'El muerto y cerrar',x:'Cuando te quedás sin fichas, levantás un muerto y seguís jugando. Con 2 jugadores tenés dos muertos: tenés que quedarte sin fichas dos veces antes de poder cortar. Cada muerto levantado suma 100 puntos y cada uno que no levantás resta 100. Para cerrar la mano tenés que haber levantado todos tus muertos y tener al menos una canasta. Cerrar suma 100 puntos.',g:[]},
 {t:'Puntos de cada mano',x:'Al terminar la mano se suman las fichas que bajaste a la mesa, las canastas, el muerto y el cierre. Se restan las fichas que te quedaron en el atril. Se juega hasta que un equipo llega a 3000 puntos.',g:[]},
 {t:'Cómo se juega desde el celular',x:'Tocá una ficha para elegirla y apretá el botón Bajar para formar un juego. Para agregar a un juego que ya está en la mesa, arrastrá la ficha hasta ese juego y soltala. Podés mover las fichas del atril, que tiene dos filas, arrastrándolas. Cuando tengas tu turno, el celular te avisa.',g:[]}];
-let rp=0,rv=true;
+let rp=0,rv=true,RA=null;
+function stopAudio(){if(RA){RA.onerror=null;try{RA.pause()}catch(e){}RA=null}if(window.speechSynthesis)speechSynthesis.cancel()}
+// Usa audio/regla-N.mp3 (o .m4a) si existe; si no, la voz del navegador
+function playRule(n,text){stopAudio();if(!rv)return;const ex=['mp3','m4a'];let k=0;
+ const next=()=>{if(k>=ex.length){speak(text);return}
+  const a=new Audio('audio/regla-'+n+'.'+ex[k++]);RA=a;
+  a.onerror=()=>{if(RA===a)next()};
+  const p=a.play();if(p&&p.catch)p.catch(()=>{if(RA===a)next()})};
+ next()}
 function speak(t){if(!window.speechSynthesis)return;speechSynthesis.cancel();if(!rv)return;const u=new SpeechSynthesisUtterance(t);u.lang='es-AR';u.rate=.95;speechSynthesis.speak(u)}
 function showRules(){rp=0;$('rules').style.display='block';rpage()}
-function closeRules(){if(window.speechSynthesis)speechSynthesis.cancel();$('rules').style.display='none'}
+function closeRules(){stopAudio();$('rules').style.display='none'}
 function rgo(d){if(rp+d>=RP.length)return closeRules();rp=Math.max(0,rp+d);rpage()}
 function rvoz(){rv=!rv;rpage()}
 function rpage(){const p=RP[rp];
  $('rules').innerHTML=`<div style="max-width:1000px;margin:0 auto;text-align:center"><small>Página ${rp+1} de ${RP.length}</small><h1 style="margin:6px">${p.t}</h1><p style="font-size:26px;line-height:1.4">${p.x}</p><div class="tv">${p.g.map(g=>`<div class="exg">${g[0].map(i=>T(i)).join('')}<div>${g[1]}</div></div>`).join('')}</div><div class="row" style="justify-content:center;margin-top:22px"><button class="s" onclick="rgo(-1)" ${rp?'':'disabled'}>◀ Anterior</button><button class="s" onclick="rvoz()">${rv?'🔊 Voz':'🔇 Voz'}</button><button id="rnext" onclick="rgo(1)">${rp<RP.length-1?'Siguiente ▶':'Listo ✔'}</button><button class="s" onclick="closeRules()">✖ Cerrar</button></div></div>`;
- speak(p.x);$('rnext').focus()}
+ playRule(rp+1,p.x);$('rnext').focus()}
 document.addEventListener('keydown',e=>{if($('rules').style.display!=='block')return;if(e.key==='ArrowRight')rgo(1);if(e.key==='ArrowLeft')rgo(-1);if(e.key==='Escape')closeRules()});
 $('hostBtn').onclick=()=>{audio();makeRoom()};
 $('showJoinBtn').onclick=()=>$('joinBox').classList.toggle('hidden');

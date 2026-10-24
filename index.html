@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com; connect-src https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://*.google.com https://www.gstatic.com wss://*.firebaseio.com; img-src 'self' data: blob: https:; media-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; frame-src https://*.firebaseapp.com https://accounts.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Burako TV</title>
 <style>
@@ -101,6 +102,7 @@ function meldInfo(ids){
 
 // ---- lógica (corre en el celular, dentro de una transacción) ----
 const act=(fn,opt=true)=>{if(opt&&S){try{const l=JSON.parse(JSON.stringify(S));fn(l);render(l)}catch(e){toast(e.message||'Error');return}}return runTransaction(db,async t=>{const sn=await t.get(ref);const s=sn.data();fn(s);t.set(ref,s)}).catch(e=>toast(e.message||'Error'))};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const idx=s=>s.players.findIndex(p=>p.uid===me);
 const hasCan=(s,tm)=>s.melds.some(m=>m.team===tm&&m.ids.length>=7);
 function turnChk(s){const i=idx(s);if(i<0||s.turn!==i)throw Error('No es tu turno');return i}
@@ -131,7 +133,7 @@ function deal(s){
  s.turn=(s.hand=(s.hand||0)+1)%s.players.length-0;s.msg='¡Nueva mano!';
 }
 const A={
- join(name){act(s=>{if(s.phase!=='lobby')throw Error('Ya empezó');if(idx(s)<0){if(s.players.length>=4)throw Error('Sala llena');s.players.push({uid:me,name})}})},
+ join(name){act(s=>{if(s.phase!=='lobby')throw Error('Ya empezó');if(idx(s)<0){if(s.players.length>=4)throw Error('Sala llena');s.players.push({uid:me,name:String(name).slice(0,20)})}})},
  start(){act(s=>{const n=s.players.length;if(n!==2&&n!==4)throw Error('Se juega de a 2 o de a 4');s.scores=[0,0];s.hand=0;deal(s)},false)},
  again(){act(s=>{if(s.phase==='over')s.scores=[0,0];deal(s)},false)},
  draw(){act(s=>{const i=turnChk(s);if(s.drawn)throw Error('Ya robaste');
@@ -153,7 +155,7 @@ const A={
 };
 
 // ---- vistas ----
-const teamName=(s,t)=>s.players.filter((_,k)=>k%2===t).map(p=>p.name).join(' y ')||'—';
+const teamName=(s,t)=>s.players.filter((_,k)=>k%2===t).map(p=>esc(p.name)).join(' y ')||'—';
 const meldTiles=m=>m.ids.map((x,k)=>T(x,m.ids.length>=7&&k===m.ids.length-1?'cx'+(m.w?'':' pure'):'')).join('');
 const meldHtml=(m,cls='')=>`<div class="card ${cls}" style="margin:4px 0">${meldTiles(m)}</div>`;
 const rnd=(id,k)=>{const x=Math.sin(id*12.9898+k*78.233)*43758.5453;return x-Math.floor(x)};
@@ -171,7 +173,7 @@ function tv(s){
  const col=t=>`<div><h2 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">${teamName(s,t)} — ${s.scores[t]} ${muertosTV(s,t)}</h2>${s.melds.filter(m=>m.team===t).map(m=>meldHtml(m,'mt')).join('')}</div>`;
  let end='';
  if(s.phase!=='play')end=`<div class="card"><h2>${s.phase==='over'?'¡Fin del juego!':'Fin de la mano'}</h2>${s.result.map(r=>`<p>${teamName(s,r.team)}: ${r.pts>=0?'+':''}${r.pts} → <b>${r.total}</b></p>`).join('')}</div>`;
- document.body.style.overflow='hidden';root.innerHTML=`<div id="tvwrap" class="tv"><div class="tvg">${col(0)}<div style="text-align:center"><div class="msg">${s.phase==='play'?'Juega: '+cur.name:''}</div><h3>Pozo (${s.pozo.length})</h3>${pozoTV(s.pozo)}<h3>Mazo (${s.deck.length})</h3>${pilesTV(s.deck.length)}<p>${s.msg||''}</p>${end}</div>${col(1)}</div></div>`;fit();
+ document.body.style.overflow='hidden';root.innerHTML=`<div id="tvwrap" class="tv"><div class="tvg">${col(0)}<div style="text-align:center"><div class="msg">${s.phase==='play'?'Juega: '+esc(cur.name):''}</div><h3>Pozo (${s.pozo.length})</h3>${pozoTV(s.pozo)}<h3>Mazo (${s.deck.length})</h3>${pilesTV(s.deck.length)}<p>${s.msg||''}</p>${end}</div>${col(1)}</div></div>`;fit();
 }
 let RK={a:[],b:[]},drag=null;
 try{RK=JSON.parse(localStorage.rk)||RK}catch(e){}
@@ -210,8 +212,8 @@ function bindRack(){
 function phone(s){
  const i=idx(s);
  if(s.phase==='lobby'){
-  if(i<0){root.innerHTML=`<div style="padding:20px"><h2>Burako — sala ${ref.id}</h2><input id="nm" placeholder="Tu nombre" value="${localStorage.nm||''}"><button onclick="localStorage.nm=nm.value;A.join(nm.value||'Jugador')">Entrar</button></div>`;return}
-  root.innerHTML=`<div style="padding:20px"><h2>Sala ${ref.id}</h2><p>${s.players.map(p=>p.name).join(', ')}</p>${i===0?`<button onclick="A.start()">Comenzar (${s.players.length} jugadores)</button>`:'<p>Esperá que empiece el primero…</p>'}</div>`;return;
+  if(i<0){root.innerHTML=`<div style="padding:20px"><h2>Burako — sala ${ref.id}</h2><input id="nm" placeholder="Tu nombre" value="${esc(localStorage.nm||'')}"><button onclick="localStorage.nm=nm.value;A.join((nm.value||'Jugador').trim().slice(0,20))">Entrar</button></div>`;return}
+  root.innerHTML=`<div style="padding:20px"><h2>Sala ${ref.id}</h2><p>${s.players.map(p=>esc(p.name)).join(', ')}</p>${i===0?`<button onclick="A.start()">Comenzar (${s.players.length} jugadores)</button>`:'<p>Esperá que empiece el primero…</p>'}</div>`;return;
  }
  if(i<0){root.innerHTML='<p style="padding:20px">Partida en curso.</p>';return}
  const h=s.hands[me]||[],mine=s.turn===i,tm=i%2;syncRack(h);sel=new Set([...sel].filter(x=>h.includes(x)));
@@ -220,7 +222,7 @@ function phone(s){
  const can=mine&&s.drawn&&sel.size>0;
  const my=s.melds.filter(m=>m.team===tm).map(m=>`<div class="card sm meld ${can?'tap':''}" data-m="${m.id}" style="margin:4px 0" onclick="addTo(${m.id})">${meldTiles(m)}</div>`).join('');
  root.innerHTML=`<div style="padding:12px;padding-bottom:40px">
- <div class="msg">${s.phase==='play'?(mine?(s.drawn?'Tu turno: bajá o descartá':'Tu turno: robá'):'Juega '+s.players[s.turn].name):'—'}</div>
+ <div class="msg">${s.phase==='play'?(mine?(s.drawn?'Tu turno: bajá o descartá':'Tu turno: robá'):'Juega '+esc(s.players[s.turn].name)):'—'}</div>
  <small>${teamName(s,0)}: ${s.scores[0]} · ${teamName(s,1)}: ${s.scores[1]} · Mazo ${s.deck.length} · Pozo ${s.pozo.length} · Muertos ${s.mtn[tm]}/${s.mtT}</small>${end}
  ${s.pozo.length?`<small>Pozo (${s.pozo.length}) — si levantás, te llevás todas</small><div class="card sm pzp">${s.pozo.map(x=>T(x)).join('')}</div>`:''}
  <h3>Juegos de mi equipo</h3>${my||'<small>Todavía no bajaron nada</small>'}${can&&my?'<small>Tocá un juego para sumar las fichas elegidas</small>':''}
@@ -301,7 +303,7 @@ const sndMeld=()=>{[300,360,430].forEach((f,k)=>{osc(k*.08,f,f*.5,.12,.4,'triang
 document.addEventListener('click',audio);document.addEventListener('keydown',audio);
 // ---- arranque ----
 signInAnonymously(auth).then(async u=>{
- me=u.user.uid;const r=new URLSearchParams(location.search).get('r');
+ me=u.user.uid;let r=new URLSearchParams(location.search).get('r');if(r&&!/^[A-HJ-NP-Z2-9]{6}$/.test(r.toUpperCase())){r=null;history.replaceState(null,'',location.pathname)}
  if(r){ref=doc(db,'burako',r.toUpperCase());onSnapshot(ref,sn=>sn.exists()?render(sn.data()):root.innerHTML='<p style="padding:20px">No existe esa sala. <a href="'+location.pathname+'" style="color:#ffd54f">Volver</a></p>',e=>toast(e.message))}
  else home();
 }).catch(e=>{$('home').classList.add('hidden');root.innerHTML='<p style="padding:20px;font-size:20px">⚠️ '+e.message+'<br><small>Tiene que abrirse desde GitHub Pages/Firebase Hosting (https), no como archivo local.</small></p>'});

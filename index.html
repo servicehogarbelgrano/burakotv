@@ -185,13 +185,14 @@ function home(){
  <p><small>También podés escanear el QR de la TV con la cámara</small></p></div></div>`}
 async function makeRoom(){
  const code=Math.random().toString(36).slice(2,6).toUpperCase();ref=db.collection('burako').doc(code);
- await ref.set({phase:'lobby',players:[],scores:[0,0],melds:[],msg:''});
- ref.onSnapshot(sn=>sn.exists&&render(sn.data()))}
+ try{await ref.set({phase:'lobby',players:[],scores:[0,0],melds:[],msg:''})}
+ catch(e){root.innerHTML='<p style="padding:20px;font-size:20px">⚠️ No se pudo crear la sala: '+e.message+'<br><small>Revisá las reglas de Firestore (tienen que permitir la colección "burako").</small></p>';return}
+ ref.onSnapshot(sn=>sn.exists&&render(sn.data()),e=>toast(e.message))}
 function goRoom(){const c=($('cd').value||'').trim().toUpperCase();if(c.length<4)return toast('Poné el código de 4 letras');location.href=location.pathname+'?r='+c}
 // ---- arranque ----
 (!firebaseConfig.apiKey?Promise.reject(new Error('Falta pegar la config de Firebase (apiKey vacía) al principio del archivo index.html')):Promise.resolve().then(()=>firebase.auth().signInAnonymously())).then(async u=>{
  me=u.user.uid;const r=new URLSearchParams(location.search).get('r');
- if(r){ref=db.collection('burako').doc(r.toUpperCase());ref.onSnapshot(sn=>sn.exists?render(sn.data()):root.innerHTML='<p style="padding:20px">No existe esa sala. <a href="'+location.pathname+'" style="color:#ffd54f">Volver</a></p>')}
+ if(r){ref=db.collection('burako').doc(r.toUpperCase());ref.onSnapshot(sn=>sn.exists?render(sn.data()):root.innerHTML='<p style="padding:20px">No existe esa sala. <a href="'+location.pathname+'" style="color:#ffd54f">Volver</a></p>',e=>toast(e.message))}
  else home();
 }).catch(e=>root.innerHTML='<p style="padding:20px;font-size:20px">⚠️ '+e.message+'<br><small>Tiene que abrirse desde GitHub Pages/Firebase Hosting (https), no como archivo local.</small></p>');
 </script></body></html>

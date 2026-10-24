@@ -31,6 +31,10 @@ input{font:inherit;padding:12px;border-radius:10px;border:0;width:100%;margin:8p
 .brand{font-size:clamp(3rem,8vw,6rem);font-weight:950;letter-spacing:.12em;color:#ffd166;text-shadow:0 5px #8a5a00}
 #home button{background:#d43d43;color:#fff}#home .blue{background:#2469b2}#home .good{background:#20865a}#home .secondary{background:#33465d}
 #home input{background:#111923;color:#fff;border:1px solid #3c4c60}.hidden{display:none!important}.muted{color:#aab8c9}
+.t.back{background:#b71c1c;color:#fff;font-size:9px;border-color:#7f0000;letter-spacing:-.5px}
+.mu{display:inline-block;text-align:center;margin:4px 10px 4px 0}.mu.tk{opacity:.35}
+.pile{position:relative;width:64px;height:80px;margin:6px 8px}.pile i{position:absolute;width:52px;height:68px;border-radius:8px;background:#b71c1c;border:2px solid #7f0000;box-shadow:0 2px 4px #0006}
+.pile b{position:absolute;left:6px;top:26px;width:52px;text-align:center;font-size:26px}
 </style></head><body>
 <div id="errbar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99;background:#c62828;padding:12px;font-size:20px"></div>
 <section id="home" class="screen center">
@@ -80,15 +84,16 @@ function meldInfo(ids){
  const cols=[...new Set(ids.filter(i=>N(i)&&N(i)!==2).map(C))];
  if(cols.length>1)return null;
  const tc=cols.length?cols:[...new Set(ids.filter(i=>N(i)===2).map(C))],L=ids.length;
+ let best=null;
  for(const col of tc)for(let s=1;s+L-1<=14;s++){
   const pos=Array(L).fill(null),left=[];
   for(const i of ids){const n=N(i);let p=-1;if(n&&C(i)===col)p=n===1?(s===1?0:14-s):n-s;
    if(p>=0&&p<L&&pos[p]===null)pos[p]=i;else left.push(i)}
   if(left.some(i=>N(i)&&N(i)!==2)||left.length>1)continue;
   if(left.length)pos[pos.indexOf(null)]=left[0];
-  return{t:'e',ids:pos,w:left.length};
+  if(!best||left.length<best.w)best={t:'e',ids:pos,w:left.length};
  }
- return null;
+ return best;
 }
 
 // ---- lógica (corre en el celular, dentro de una transacción) ----
@@ -100,7 +105,7 @@ function nextT(s){s.turn=(s.turn+1)%s.players.length;s.drawn=false}
 function after(s,i,disc){
  const tm=i%2,h=s.hands[me];
  if(h.length===0){
-  if(!s.mt[tm]){s.hands[me]=s.muertos[tm];s.mt[tm]=true;s.msg+=' ¡Levantó el muerto!';if(disc)nextT(s);return}
+  if(s.mtn[tm]<s.mtT){s.hands[me]=s.muertos[tm+'_'+s.mtn[tm]];s.mtn[tm]++;s.msg+=' ¡Levantó el muerto'+(s.mtT>1?' ('+s.mtn[tm]+' de '+s.mtT+')':'')+'!';if(disc)nextT(s);return}
   if(!hasCan(s,tm))throw Error('Para cerrar necesitás una canasta: guardate una ficha');
   return endHand(s,tm);
  }
@@ -109,7 +114,7 @@ function after(s,i,disc){
 function endHand(s,closer){
  const res=[0,1].map(tm=>{
   let p=s.melds.filter(m=>m.team===tm).reduce((a,m)=>a+m.ids.reduce((b,i)=>b+V(i),0)+(m.ids.length>=7?(m.w?100:200):0),0);
-  p+=s.mt[tm]?100:-100;if(closer===tm)p+=100;
+  p+=s.mtn[tm]*100-(s.mtT-s.mtn[tm])*100;if(closer===tm)p+=100;
   s.players.forEach((pl,k)=>{if(k%2===tm)p-=(s.hands[pl.uid]||[]).reduce((a,i)=>a+V(i),0)});
   s.scores[tm]+=p;return{team:tm,pts:p,total:s.scores[tm]};
  });
@@ -118,7 +123,7 @@ function endHand(s,closer){
 function deal(s){
  const a=[...Array(106).keys()];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}
  s.hands={};s.players.forEach(p=>s.hands[p.uid]=a.splice(0,11));
- s.muertos={0:a.splice(0,11),1:a.splice(0,11)};s.mt=[false,false];
+ s.mtT=s.players.length===2?2:1;s.muertos={};[0,1].forEach(t=>{for(let k=0;k<s.mtT;k++)s.muertos[t+'_'+k]=a.splice(0,11)});s.mtn=[0,0];
  s.pozo=a.splice(0,1);s.deck=a;s.melds=[];s.phase='play';s.drawn=false;s.result=null;
  s.turn=(s.hand=(s.hand||0)+1)%s.players.length-0;s.msg='¡Nueva mano!';
 }
@@ -137,7 +142,7 @@ const A={
   s.msg=s.players[i].name+' bajó un juego';after(s,i,false)})},
  add(mid,ids){act(s=>{const i=turnChk(s);if(!s.drawn)throw Error('Primero robá');
   const m=s.melds.find(x=>x.id===mid);if(!m||m.team!==i%2)throw Error('Juego inválido');
-  const inf=meldInfo([...m.ids,...ids]);if(!inf)throw Error('No encaja en ese juego');
+  const inf=meldInfo([...m.ids,...ids]);if(!inf)throw Error(m.w?'Ese juego ya tiene un comodín: la ficha solo entra si va en su número y color':'No encaja en ese juego');
   s.hands[me]=s.hands[me].filter(x=>!ids.includes(x));Object.assign(m,inf);
   s.msg=s.players[i].name+' agregó fichas';after(s,i,false)})},
  disc(id){act(s=>{const i=turnChk(s);if(!s.drawn)throw Error('Primero robá');
@@ -149,16 +154,20 @@ const teamName=(s,t)=>s.players.filter((_,k)=>k%2===t).map(p=>p.name).join(' y '
 const meldHtml=(m,cls='')=>`<div class="card ${cls}" style="margin:4px 0">${m.ids.length>=7?`<b>${m.w?'Canasta sucia':'Canasta limpia'} </b>`:''}${m.ids.map(i=>T(i)).join('')}</div>`;
 const rnd=(id,k)=>{const x=Math.sin(id*12.9898+k*78.233)*43758.5453;return x-Math.floor(x)};
 const pozoTV=a=>`<div class="pz">${a.map((id,k)=>T(id,'',`left:${(rnd(id,1)*78+2).toFixed(1)}%;top:${(rnd(id,2)*72+2).toFixed(1)}%;transform:rotate(${(rnd(id,3)*80-40).toFixed(0)}deg);z-index:${k}`)).join('')}</div>`;
+const muertosTV=(s,t)=>'<div>'+Array.from({length:s.mtT},(_,k)=>{const tk=k<s.mtn[t];return `<span class="mu ${tk?'tk':''}"><div class="t back">MUERTO</div><small>${tk?'levantado':'sin levantar'}</small></span>`}).join('')+'</div>';
+const pilesTV=n=>{const p=Math.ceil(n/10);if(!p)return '<div class="msg">¡Mazo vacío! Hay que cortar</div>';let h='';
+ for(let k=0;k<p;k++){const c=k===p-1?n-10*k:10;h+=`<div class="pile"><i style="top:8px;left:0"></i><i style="top:4px;left:3px"></i><i style="top:0;left:6px"></i><b>${c}</b></div>`}
+ return `<div class="row" style="justify-content:center">${h}</div><small>Montones de 10 fichas</small>${p===1?`<div class="msg">Último montón: quedan ${n} fichas · ¡a cortar!</div>`:''}`};
 function tv(s){
  if(s.phase==='lobby'){
   root.innerHTML=`<div class="tv" style="text-align:center;padding:30px"><h1>BURAKO</h1><p>Escaneá el QR con el celular (2 o 4 jugadores)</p><div id="qr" style="display:inline-block;background:#fff;padding:12px;border-radius:12px"></div><p class="big">${ref.id}</p><h2>${s.players.map(p=>p.name).join(' · ')||'Esperando jugadores…'}</h2><button class="s" style="font-size:22px" onclick="showRules()">📖 Reglas del juego</button></div>`;
   new QRCode($('qr'),{text:location.origin+location.pathname+'?r='+ref.id,width:240,height:240});return;
  }
  const cur=s.players[s.turn];
- const col=t=>`<div><h2>${teamName(s,t)} — ${s.scores[t]}</h2>${s.mt[t]?'<small>Muerto levantado</small>':'<small>Muerto sin levantar</small>'}${s.melds.filter(m=>m.team===t).map(m=>meldHtml(m,'sm')).join('')}</div>`;
+ const col=t=>`<div><h2>${teamName(s,t)} — ${s.scores[t]}</h2>${muertosTV(s,t)}${s.melds.filter(m=>m.team===t).map(m=>meldHtml(m,'sm')).join('')}</div>`;
  let end='';
  if(s.phase!=='play')end=`<div class="card"><h2>${s.phase==='over'?'¡Fin del juego!':'Fin de la mano'}</h2>${s.result.map(r=>`<p>${teamName(s,r.team)}: ${r.pts>=0?'+':''}${r.pts} → <b>${r.total}</b></p>`).join('')}</div>`;
- root.innerHTML=`<div class="tv"><div class="tvg">${col(0)}<div style="text-align:center"><div class="msg">${s.phase==='play'?'Juega: '+cur.name:''}</div><p>Mazo: ${s.deck.length}</p><h3>Pozo (${s.pozo.length})</h3>${pozoTV(s.pozo)}<p>${s.msg||''}</p>${end}</div>${col(1)}</div></div>`;
+ root.innerHTML=`<div class="tv"><div class="tvg">${col(0)}<div style="text-align:center"><div class="msg">${s.phase==='play'?'Juega: '+cur.name:''}</div><h3>Pozo (${s.pozo.length})</h3>${pozoTV(s.pozo)}<h3>Mazo (${s.deck.length})</h3>${pilesTV(s.deck.length)}<p>${s.msg||''}</p>${end}</div>${col(1)}</div></div>`;
 }
 let RK={a:[],b:[]},drag=null;
 try{RK=JSON.parse(localStorage.rk)||RK}catch(e){}
@@ -208,7 +217,7 @@ function phone(s){
  const my=s.melds.filter(m=>m.team===tm).map(m=>`<div class="card sm meld ${can?'tap':''}" data-m="${m.id}" style="margin:4px 0" onclick="addTo(${m.id})">${m.ids.map(x=>T(x)).join('')}</div>`).join('');
  root.innerHTML=`<div style="padding:12px;padding-bottom:40px">
  <div class="msg">${s.phase==='play'?(mine?(s.drawn?'Tu turno: bajá o descartá':'Tu turno: robá'):'Juega '+s.players[s.turn].name):'—'}</div>
- <small>${teamName(s,0)}: ${s.scores[0]} · ${teamName(s,1)}: ${s.scores[1]} · Mazo ${s.deck.length} · Pozo ${s.pozo.length} · Muerto ${s.mt[tm]?'ok':'sin levantar'}</small>${end}
+ <small>${teamName(s,0)}: ${s.scores[0]} · ${teamName(s,1)}: ${s.scores[1]} · Mazo ${s.deck.length} · Pozo ${s.pozo.length} · Muertos ${s.mtn[tm]}/${s.mtT}</small>${end}
  ${s.pozo.length?`<small>Pozo (${s.pozo.length}) — si levantás, te llevás todas</small><div class="card sm pzp">${s.pozo.map(x=>T(x)).join('')}</div>`:''}
  <h3>Juegos de mi equipo</h3>${my||'<small>Todavía no bajaron nada</small>'}${can&&my?'<small>Tocá un juego para sumar las fichas elegidas</small>':''}
  ${s.phase==='play'&&mine?`<div class="row" style="margin-top:8px"><button ${s.drawn?'disabled':''} onclick="A.draw()">Robar</button><button ${s.drawn?'disabled':''} onclick="A.pozo()">Levantar pozo</button></div><div class="row" style="margin-top:8px"><button ${!s.drawn||!sel.size?'disabled':''} onclick="bajar()">Bajar (${sel.size})</button><button class="s" ${!s.drawn||sel.size!==1?'disabled':''} onclick="descartar()">Descartar</button></div>`:''}
@@ -234,13 +243,13 @@ const tid=(n,c)=>c*13+n-1,J=104;
 const run=(a,b,c)=>Array.from({length:b-a+1},(_,k)=>tid(a+k,c));
 const RP=[
 {t:'Objetivo',x:'Burako se juega de a 2 o de a 4 jugadores. Con 4 se juega en parejas, y cada uno se sienta enfrente de su compañero. Gana el primer equipo que llega a 3000 puntos.',g:[]},
-{t:'Las fichas y sus puntos',x:'Hay 104 fichas numeradas del 1 al 13 en cuatro colores, más 2 comodines. El 1 vale 15 puntos, el 2 vale 20, del 3 al 7 valen 5, y del 8 al 13 valen 10. El comodín vale 50. El comodín y el 2 pueden reemplazar a cualquier ficha.',g:[[[tid(1,0)],'15'],[[tid(2,1)],'20 (comodín)'],[[tid(5,2)],'5'],[[tid(11,3)],'10'],[[J],'50 (comodín)']]},
-{t:'Reparto',x:'Cada jugador recibe 11 fichas en su atril, que es su celular. Se arman dos pilas de 11 fichas llamadas muertos, una para cada equipo. Una ficha se pone en el pozo y el resto queda en el mazo.',g:[]},
+{t:'Las fichas y sus puntos',x:'Hay 104 fichas numeradas del 1 al 13 en cuatro colores, más 2 comodines. El 1 vale 15 puntos, el 2 vale 20, del 3 al 7 valen 5, y del 8 al 13 valen 10. El comodín vale 50. El comodín y el 2 pueden reemplazar a cualquier ficha. El 2 siempre cuenta 20 puntos, aunque esté usado como comodín.',g:[[[tid(1,0)],'15'],[[tid(2,1)],'20 (comodín)'],[[tid(5,2)],'5'],[[tid(11,3)],'10'],[[J],'50 (comodín)']]},
+{t:'Reparto',x:'Cada jugador recibe 11 fichas en su atril, que es su celular. Se arman pilas de 11 fichas llamadas muertos: con 4 jugadores hay una por pareja, y con 2 jugadores cada uno tiene dos muertos. Una ficha se pone en el pozo y el resto queda en el mazo.',g:[]},
 {t:'Tu turno',x:'En tu turno primero tenés que robar: o una ficha del mazo, o todo el pozo. Después podés bajar juegos o agregar fichas a los juegos de tu equipo. Para terminar, descartás una ficha al pozo.',g:[]},
 {t:'Piernas',x:'Una pierna son 3 o más fichas del mismo número. Pueden ser de distinto color, y también se pueden repetir colores. Se permite un solo comodín por juego.',g:[[[tid(7,0),tid(7,1),tid(7,2)],'Pierna'],[[tid(3,0),tid(3,0)+52,tid(3,1),tid(3,2)],'También vale repetir color'],[[tid(9,3),tid(9,0),J],'Con un comodín']]},
-{t:'Escaleras',x:'Una escalera son 3 o más fichas del mismo color, en orden. El 1 puede ir antes del 2 o después del 13. Si falta una ficha en el medio, un comodín ocupa su lugar.',g:[[run(4,7,1),'Escalera'],[[tid(4,2),tid(5,2),J,tid(7,2)],'El comodín tapa el 6'],[[tid(12,0),tid(13,0),tid(1,0)],'El 1 va después del 13'],[run(1,3,3),'o antes del 2']]},
+{t:'Escaleras',x:'Una escalera son 3 o más fichas del mismo color, en orden. El 1 puede ir antes del 2 o después del 13. Si falta una ficha en el medio, un comodín ocupa su lugar. Un juego solo puede tener un comodín. Un 2 del mismo color puesto en su lugar vale como ficha común y no como comodín.',g:[[run(4,7,1),'Escalera'],[[tid(4,2),tid(5,2),J,tid(7,2)],'El comodín tapa el 6'],[[tid(12,0),tid(13,0),tid(1,0)],'El 1 va después del 13'],[run(1,3,3),'o antes del 2']]},
 {t:'Canastas',x:'Una canasta es un juego de 7 o más fichas. Si no tiene ningún comodín es una canasta limpia y suma 200 puntos. Si usa un comodín es una canasta sucia y suma 100 puntos.',g:[[run(3,9,0),'Limpia: 200 puntos'],[[...run(3,5,2),J,...run(7,9,2)],'Sucia: 100 puntos']]},
-{t:'El muerto y cerrar',x:'Cuando te quedás sin fichas, levantás el muerto de tu equipo y seguís jugando. Levantar el muerto suma 100 puntos, y si nunca lo levantás restan 100. Para cerrar la mano tenés que haber levantado el muerto y tener al menos una canasta. Cerrar suma 100 puntos.',g:[]},
+{t:'El muerto y cerrar',x:'Cuando te quedás sin fichas, levantás un muerto y seguís jugando. Con 2 jugadores tenés dos muertos: tenés que quedarte sin fichas dos veces antes de poder cortar. Cada muerto levantado suma 100 puntos y cada uno que no levantás resta 100. Para cerrar la mano tenés que haber levantado todos tus muertos y tener al menos una canasta. Cerrar suma 100 puntos.',g:[]},
 {t:'Puntos de cada mano',x:'Al terminar la mano se suman las fichas que bajaste a la mesa, las canastas, el muerto y el cierre. Se restan las fichas que te quedaron en el atril. Se juega hasta que un equipo llega a 3000 puntos.',g:[]},
 {t:'Cómo se juega desde el celular',x:'Tocá una ficha para elegirla y apretá el botón Bajar para formar un juego. Para agregar a un juego que ya está en la mesa, arrastrá la ficha hasta ese juego y soltala. Podés mover las fichas del atril, que tiene dos filas, arrastrándolas. Cuando tengas tu turno, el celular te avisa.',g:[]}];
 let rp=0,rv=true;

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Burako TV</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:#0b5d3b;color:#fff;min-height:100vh}
+button{font:inherit;border:0;border-radius:10px;padding:12px 14px;background:#ffd54f;color:#222;font-weight:700}
+button.s{background:#e0e0e0}button:disabled{opacity:.4}
+.t{display:inline-flex;align-items:center;justify-content:center;width:38px;height:52px;margin:2px;border-radius:7px;background:#fffdf3;font-weight:800;font-size:22px;border:2px solid #cfc8a8;user-select:none}
+.t.sel{transform:translateY(-10px);border-color:#fff;box-shadow:0 0 0 3px #ffd54f}
+.tv .t{width:46px;height:62px;font-size:28px}.sm .t{width:26px;height:36px;font-size:15px;margin:1px}
+.card{background:#00000040;border-radius:12px;padding:10px;margin:8px 0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.msg{background:#ffd54f;color:#222;border-radius:10px;padding:8px 12px;font-weight:700;margin:6px 0}
+h2,h3{margin:6px 0}.big{font-size:42px;font-weight:900}
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#c62828;padding:10px 16px;border-radius:10px;display:none;z-index:9}
+.tvg{display:grid;grid-template-columns:1fr 280px 1fr;gap:14px;padding:14px}
+input{font:inherit;padding:12px;border-radius:10px;border:0;width:100%;margin:8px 0}
+.rk{min-height:70px;border:2px dashed #ffffff40;border-radius:10px;margin:6px 0;padding:4px;display:flex;flex-wrap:wrap}
+.rk .t{touch-action:none;position:relative}
+.meld{border:2px solid transparent}.meld.tap{border-color:#ffd54f;border-style:dashed}
+</style></head><body>
+<div id="root"></div><div id="toast"></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+// === PEGÁ ACÁ la config de tu proyecto Firebase (la misma de teg-tv) ===
+const firebaseConfig={apiKey:"",authDomain:"",projectId:"",appId:""};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore(),$=id=>document.getElementById(id),root=$('root');
+const COL=['#d32f2f','#f9a825','#1976d2','#222'];
+const N=i=>i>=104?0:(i%52)%13+1, C=i=>i>=104?4:Math.floor((i%52)/13);
+const V=i=>{const n=N(i);return n===0?50:n===1?15:n===2?20:n<=7?5:10};
+const T=(i,x='')=>`<div class="t ${x}" data-i="${i}" style="color:${i>=104?'#7b1fa2':COL[C(i)]}">${i>=104?'★':N(i)}</div>`;
+const sortR=a=>[...a].sort((x,y)=>(C(x)-C(y))||(N(x)-N(y)));
+let me,ref,S=null,sel=new Set();
+const toast=m=>{const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2500)};
+
+// ---- validación de juegos ----
+function meldInfo(ids){
+ if(ids.length<3||ids.length>14)return null;
+ const gs=[...new Set(ids.filter(N).map(N))];
+ for(const g of gs){
+  const nat=ids.filter(i=>N(i)===g),oth=ids.filter(i=>N(i)!==g);
+  if(oth.length>1||oth.some(i=>N(i)&&N(i)!==2))continue;
+  if(nat.length<2||new Set(nat.map(C)).size!==nat.length)continue;
+  return{t:'p',ids:[...nat,...oth],w:oth.length};
+ }
+ const cols=[...new Set(ids.filter(i=>N(i)&&N(i)!==2).map(C))];
+ if(cols.length>1)return null;
+ const tc=cols.length?cols:[...new Set(ids.filter(i=>N(i)===2).map(C))],L=ids.length;
+ for(const col of tc)for(let s=1;s+L-1<=14;s++){
+  const pos=Array(L).fill(null),left=[];
+  for(const i of ids){const n=N(i);let p=-1;if(n&&C(i)===col)p=n===1?(s===1?0:14-s):n-s;
+   if(p>=0&&p<L&&pos[p]===null)pos[p]=i;else left.push(i)}
+  if(left.some(i=>N(i)&&N(i)!==2)||left.length>1)continue;
+  if(left.length)pos[pos.indexOf(null)]=left[0];
+  return{t:'e',ids:pos,w:left.length};
+ }
+ return null;
+}
+
+// ---- lógica (corre en el celular, dentro de una transacción) ----
+const act=fn=>db.runTransaction(async t=>{const sn=await t.get(ref);const s=sn.data();fn(s);t.set(ref,s)}).catch(e=>toast(e.message||'Error'));
+const idx=s=>s.players.findIndex(p=>p.uid===me);
+const hasCan=(s,tm)=>s.melds.some(m=>m.team===tm&&m.ids.length>=7);
+function turnChk(s){const i=idx(s);if(i<0||s.turn!==i)throw Error('No es tu turno');return i}
+function nextT(s){s.turn=(s.turn+1)%s.players.length;s.drawn=false}
+function after(s,i,disc){
+ const tm=i%2,h=s.hands[me];
+ if(h.length===0){
+  if(!s.mt[tm]){s.hands[me]=s.muertos[tm];s.mt[tm]=true;s.msg+=' ¡Levantó el muerto!';if(disc)nextT(s);return}
+  if(!hasCan(s,tm))throw Error('Para cerrar necesitás una canasta: guardate una ficha');
+  return endHand(s,tm);
+ }
+ if(disc)nextT(s);
+}
+function endHand(s,closer){
+ const res=[0,1].map(tm=>{
+  let p=s.melds.filter(m=>m.team===tm).reduce((a,m)=>a+m.ids.reduce((b,i)=>b+V(i),0)+(m.ids.length>=7?(m.w?100:200):0),0);
+  p+=s.mt[tm]?100:-100;if(closer===tm)p+=100;
+  s.players.forEach((pl,k)=>{if(k%2===tm)p-=(s.hands[pl.uid]||[]).reduce((a,i)=>a+V(i),0)});
+  s.scores[tm]+=p;return{team:tm,pts:p,total:s.scores[tm]};
+ });
+ s.result=res;s.phase=res.some(r=>r.total>=3000)?'over':'end';
+}
+function deal(s){
+ const a=[...Array(106).keys()];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}
+ s.hands={};s.players.forEach(p=>s.hands[p.uid]=a.splice(0,11));
+ s.muertos={0:a.splice(0,11),1:a.splice(0,11)};s.mt=[false,false];
+ s.pozo=a.splice(0,1);s.deck=a;s.melds=[];s.phase='play';s.drawn=false;s.result=null;
+ s.turn=(s.hand=(s.hand||0)+1)%s.players.length-0;s.msg='¡Nueva mano!';
+}
+const A={
+ join(name){act(s=>{if(s.phase!=='lobby')throw Error('Ya empezó');if(idx(s)<0){if(s.players.length>=4)throw Error('Sala llena');s.players.push({uid:me,name})}})},
+ start(){act(s=>{const n=s.players.length;if(n!==2&&n!==4)throw Error('Se juega de a 2 o de a 4');s.scores=[0,0];s.hand=0;deal(s)})},
+ again(){act(s=>{if(s.phase==='over')s.scores=[0,0];deal(s)})},
+ draw(){act(s=>{const i=turnChk(s);if(s.drawn)throw Error('Ya robaste');
+  if(!s.deck.length)return endHand(s,null);
+  s.hands[me].push(s.deck.pop());s.drawn=true;s.msg=s.players[i].name+' robó del mazo'})},
+ pozo(){act(s=>{const i=turnChk(s);if(s.drawn)throw Error('Ya robaste');if(!s.pozo.length)throw Error('El pozo está vacío');
+  s.hands[me].push(...s.pozo);s.msg=s.players[i].name+' levantó el pozo ('+s.pozo.length+')';s.pozo=[];s.drawn=true})},
+ meld(ids){act(s=>{const i=turnChk(s);if(!s.drawn)throw Error('Primero robá');
+  const inf=meldInfo(ids);if(!inf)throw Error('Esa combinación no es válida');
+  s.hands[me]=s.hands[me].filter(x=>!ids.includes(x));s.melds.push({id:Date.now(),team:i%2,...inf});
+  s.msg=s.players[i].name+' bajó un juego';after(s,i,false)})},
+ add(mid,ids){act(s=>{const i=turnChk(s);if(!s.drawn)throw Error('Primero robá');
+  const m=s.melds.find(x=>x.id===mid);if(!m||m.team!==i%2)throw Error('Juego inválido');
+  const inf=meldInfo([...m.ids,...ids]);if(!inf)throw Error('No encaja en ese juego');
+  s.hands[me]=s.hands[me].filter(x=>!ids.includes(x));Object.assign(m,inf);
+  s.msg=s.players[i].name+' agregó fichas';after(s,i,false)})},
+ disc(id){act(s=>{const i=turnChk(s);if(!s.drawn)throw Error('Primero robá');
+  s.hands[me]=s.hands[me].filter(x=>x!==id);s.pozo.push(id);s.msg=s.players[i].name+' descartó';after(s,i,true)})}
+};
+
+// ---- vistas ----
+const teamName=(s,t)=>s.players.filter((_,k)=>k%2===t).map(p=>p.name).join(' y ')||'—';
+const meldHtml=(m,cls='')=>`<div class="card ${cls}" style="margin:4px 0">${m.ids.length>=7?`<b>${m.w?'Canasta sucia':'Canasta limpia'} </b>`:''}${m.ids.map(i=>T(i)).join('')}</div>`;
+function tv(s){
+ if(s.phase==='lobby'){
+  root.innerHTML=`<div class="tv" style="text-align:center;padding:30px"><h1>BURAKO</h1><p>Escaneá el QR con el celular (2 o 4 jugadores)</p><div id="qr" style="display:inline-block;background:#fff;padding:12px;border-radius:12px"></div><p class="big">${ref.id}</p><h2>${s.players.map(p=>p.name).join(' · ')||'Esperando jugadores…'}</h2></div>`;
+  new QRCode($('qr'),{text:location.origin+location.pathname+'?r='+ref.id,width:240,height:240});return;
+ }
+ const cur=s.players[s.turn];
+ const col=t=>`<div><h2>${teamName(s,t)} — ${s.scores[t]}</h2>${s.mt[t]?'<small>Muerto levantado</small>':'<small>Muerto sin levantar</small>'}${s.melds.filter(m=>m.team===t).map(m=>meldHtml(m,'sm')).join('')}</div>`;
+ let end='';
+ if(s.phase!=='play')end=`<div class="card"><h2>${s.phase==='over'?'¡Fin del juego!':'Fin de la mano'}</h2>${s.result.map(r=>`<p>${teamName(s,r.team)}: ${r.pts>=0?'+':''}${r.pts} → <b>${r.total}</b></p>`).join('')}</div>`;
+ root.innerHTML=`<div class="tv"><div class="tvg">${col(0)}<div style="text-align:center"><div class="msg">${s.phase==='play'?'Juega: '+cur.name:''}</div><p>Mazo: ${s.deck.length}</p><h3>Pozo (${s.pozo.length})</h3>${s.pozo.length?T(s.pozo[s.pozo.length-1]):''}<p>${s.msg||''}</p>${end}</div>${col(1)}</div></div>`;
+}
+let RK={a:[],b:[]},drag=null;
+try{RK=JSON.parse(localStorage.rk)||RK}catch(e){}
+function syncRack(h){RK.a=RK.a.filter(x=>h.includes(x));RK.b=RK.b.filter(x=>h.includes(x));
+ h.forEach(x=>{if(!RK.a.includes(x)&&!RK.b.includes(x))RK.a.push(x)});localStorage.rk=JSON.stringify(RK)}
+function sortRack(){RK.a=sortR(RK.a);RK.b=sortR(RK.b);localStorage.rk=JSON.stringify(RK);phone(S)}
+function addTo(id){const i=idx(S);if(S.turn!==i||!S.drawn||!sel.size)return toast('Elegí fichas del atril y después tocá el juego');A.add(id,[...sel])}
+function bindRack(){
+ const r=$('rack');
+ r.onpointerdown=e=>{const el=e.target.closest('.t');if(!el)return;drag={el,id:+el.dataset.i,x:e.clientX,y:e.clientY,moved:false};el.setPointerCapture(e.pointerId)};
+ r.onpointermove=e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
+  if(!drag.moved&&Math.hypot(dx,dy)>8)drag.moved=true;
+  if(drag.moved){drag.el.style.transform=`translate(${dx}px,${dy}px)`;drag.el.style.zIndex=9}};
+ r.onpointerup=e=>{if(!drag)return;const d=drag;drag=null;
+  if(!d.moved){sel.has(d.id)?sel.delete(d.id):sel.add(d.id);return phone(S)}
+  d.el.style.display='none';const u=document.elementFromPoint(e.clientX,e.clientY);d.el.style.display='';
+  const row=u&&u.closest('.rk'),tt=u&&u.closest('.t');
+  if(row){RK.a=RK.a.filter(x=>x!==d.id);RK.b=RK.b.filter(x=>x!==d.id);
+   const L=RK[row.dataset.r];const k=tt?L.indexOf(+tt.dataset.i):-1;k>=0?L.splice(k,0,d.id):L.push(d.id);
+   localStorage.rk=JSON.stringify(RK)}
+  phone(S)};
+ r.onpointercancel=()=>{drag=null;phone(S)};
+}
+function phone(s){
+ const i=idx(s);
+ if(s.phase==='lobby'){
+  if(i<0){root.innerHTML=`<div style="padding:20px"><h2>Burako — sala ${ref.id}</h2><input id="nm" placeholder="Tu nombre" value="${localStorage.nm||''}"><button onclick="localStorage.nm=nm.value;A.join(nm.value||'Jugador')">Entrar</button></div>`;return}
+  root.innerHTML=`<div style="padding:20px"><h2>Sala ${ref.id}</h2><p>${s.players.map(p=>p.name).join(', ')}</p>${i===0?`<button onclick="A.start()">Comenzar (${s.players.length} jugadores)</button>`:'<p>Esperá que empiece el primero…</p>'}</div>`;return;
+ }
+ if(i<0){root.innerHTML='<p style="padding:20px">Partida en curso.</p>';return}
+ const h=s.hands[me]||[],mine=s.turn===i,tm=i%2;syncRack(h);sel=new Set([...sel].filter(x=>h.includes(x)));
+ let end='';
+ if(s.phase!=='play')end=`<div class="card"><h3>${s.phase==='over'?'¡Fin del juego!':'Fin de la mano'}</h3>${s.result.map(r=>`<p>${teamName(s,r.team)}: ${r.pts>=0?'+':''}${r.pts} → <b>${r.total}</b></p>`).join('')}<button onclick="A.again()">${s.phase==='over'?'Nueva partida':'Siguiente mano'}</button></div>`;
+ const can=mine&&s.drawn&&sel.size>0;
+ const my=s.melds.filter(m=>m.team===tm).map(m=>`<div class="card sm meld ${can?'tap':''}" style="margin:4px 0" onclick="addTo(${m.id})">${m.ids.map(x=>T(x)).join('')}</div>`).join('');
+ root.innerHTML=`<div style="padding:12px;padding-bottom:40px">
+ <div class="msg">${s.phase==='play'?(mine?(s.drawn?'Tu turno: bajá o descartá':'Tu turno: robá'):'Juega '+s.players[s.turn].name):'—'}</div>
+ <small>${teamName(s,0)}: ${s.scores[0]} · ${teamName(s,1)}: ${s.scores[1]} · Mazo ${s.deck.length} · Pozo ${s.pozo.length} · Muerto ${s.mt[tm]?'ok':'sin levantar'}</small>${end}
+ ${s.pozo.length?`<div class="row"><small>Tope del pozo:</small><div class="sm">${T(s.pozo[s.pozo.length-1])}</div></div>`:''}
+ <h3>Juegos de mi equipo</h3>${my||'<small>Todavía no bajaron nada</small>'}${can&&my?'<small>Tocá un juego para sumar las fichas elegidas</small>':''}
+ ${s.phase==='play'&&mine?`<div class="row" style="margin-top:8px"><button ${s.drawn?'disabled':''} onclick="A.draw()">Robar</button><button ${s.drawn?'disabled':''} onclick="A.pozo()">Levantar pozo</button></div><div class="row" style="margin-top:8px"><button ${!s.drawn||!sel.size?'disabled':''} onclick="A.meld([...sel])">Bajar (${sel.size})</button><button class="s" ${!s.drawn||sel.size!==1?'disabled':''} onclick="A.disc([...sel][0])">Descartar</button></div>`:''}
+ <div class="row" style="margin-top:10px;justify-content:space-between"><h3>Mi atril</h3><button class="s" onclick="sortRack()">Ordenar</button></div>
+ <small>Tocá para elegir · arrastrá para mover (hay 2 filas)</small>
+ <div id="rack"><div class="rk" data-r="a">${RK.a.map(x=>T(x,sel.has(x)?'sel':'')).join('')}</div><div class="rk" data-r="b">${RK.b.map(x=>T(x,sel.has(x)?'sel':'')).join('')}</div></div></div>`;
+ bindRack();
+}
+function render(s){S=s;if(drag&&drag.moved)return;new URLSearchParams(location.search).get('r')?phone(s):tv(s)}
+
+function home(){
+ root.innerHTML=`<div style="text-align:center;padding:40px 20px"><h1 style="font-size:56px;margin:10px">BURAKO</h1><p>Jugá en la tele con el celular como atril</p>
+ <div style="max-width:300px;margin:24px auto"><button style="font-size:20px;width:100%" onclick="makeRoom()">📺 Soy la TV: crear sala</button>
+ <p style="margin:26px 0 4px">o entrá desde el celular</p>
+ <input id="cd" placeholder="Código de sala" maxlength="4" style="text-transform:uppercase;text-align:center;font-size:22px">
+ <button style="width:100%" onclick="goRoom()">📱 Entrar a la sala</button>
+ <p><small>También podés escanear el QR de la TV con la cámara</small></p></div></div>`}
+async function makeRoom(){
+ const code=Math.random().toString(36).slice(2,6).toUpperCase();ref=db.collection('burako').doc(code);
+ await ref.set({phase:'lobby',players:[],scores:[0,0],melds:[],msg:''});
+ ref.onSnapshot(sn=>sn.exists&&render(sn.data()))}
+function goRoom(){const c=($('cd').value||'').trim().toUpperCase();if(c.length<4)return toast('Poné el código de 4 letras');location.href=location.pathname+'?r='+c}
+// ---- arranque ----
+(!firebaseConfig.apiKey?Promise.reject(new Error('Falta pegar la config de Firebase (apiKey vacía) al principio del archivo index.html')):Promise.resolve().then(()=>firebase.auth().signInAnonymously())).then(async u=>{
+ me=u.user.uid;const r=new URLSearchParams(location.search).get('r');
+ if(r){ref=db.collection('burako').doc(r.toUpperCase());ref.onSnapshot(sn=>sn.exists?render(sn.data()):root.innerHTML='<p style="padding:20px">No existe esa sala. <a href="'+location.pathname+'" style="color:#ffd54f">Volver</a></p>')}
+ else home();
+}).catch(e=>root.innerHTML='<p style="padding:20px;font-size:20px">⚠️ '+e.message+'<br><small>Tiene que abrirse desde GitHub Pages/Firebase Hosting (https), no como archivo local.</small></p>');
+</script></body></html>

@@ -14,11 +14,14 @@ button.s{background:#e0e0e0}button:disabled{opacity:.4}
 .msg{background:#ffd54f;color:#222;border-radius:10px;padding:8px 12px;font-weight:700;margin:6px 0}
 h2,h3{margin:6px 0}.big{font-size:42px;font-weight:900}
 #toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#c62828;padding:10px 16px;border-radius:10px;display:none;z-index:9}
-.tvg{display:grid;grid-template-columns:1fr 280px 1fr;gap:14px;padding:14px}
+.tvg{display:grid;grid-template-columns:1fr 400px 1fr;gap:14px;padding:14px}
 input{font:inherit;padding:12px;border-radius:10px;border:0;width:100%;margin:8px 0}
 .rk{min-height:70px;border:2px dashed #ffffff40;border-radius:10px;margin:6px 0;padding:4px;display:flex;flex-wrap:wrap}
 .rk .t{touch-action:none;position:relative}
 .meld{border:2px solid transparent}.meld.tap{border-color:#ffd54f;border-style:dashed}
+.pz{position:relative;height:340px;background:#00000030;border:3px dashed #ffffff40;border-radius:16px;margin:8px 0}
+.pz .t{position:absolute;box-shadow:0 2px 5px #0006}
+.pzp{display:flex;flex-wrap:wrap;max-height:150px;overflow-y:auto}
 </style></head><body>
 <div id="root"></div><div id="toast"></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -33,7 +36,7 @@ const db=firebase.firestore(),$=id=>document.getElementById(id),root=$('root');
 const COL=['#d32f2f','#f9a825','#1976d2','#222'];
 const N=i=>i>=104?0:(i%52)%13+1, C=i=>i>=104?4:Math.floor((i%52)/13);
 const V=i=>{const n=N(i);return n===0?50:n===1?15:n===2?20:n<=7?5:10};
-const T=(i,x='')=>`<div class="t ${x}" data-i="${i}" style="color:${i>=104?'#7b1fa2':COL[C(i)]}">${i>=104?'★':N(i)}</div>`;
+const T=(i,x='',st='')=>`<div class="t ${x}" data-i="${i}" style="color:${i>=104?'#7b1fa2':COL[C(i)]};${st}">${i>=104?'★':N(i)}</div>`;
 const sortR=a=>[...a].sort((x,y)=>(C(x)-C(y))||(N(x)-N(y)));
 let me,ref,S=null,sel=new Set();
 const toast=m=>{const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2500)};
@@ -45,7 +48,7 @@ function meldInfo(ids){
  for(const g of gs){
   const nat=ids.filter(i=>N(i)===g),oth=ids.filter(i=>N(i)!==g);
   if(oth.length>1||oth.some(i=>N(i)&&N(i)!==2))continue;
-  if(nat.length<2||new Set(nat.map(C)).size!==nat.length)continue;
+  if(nat.length<2)continue;
   return{t:'p',ids:[...nat,...oth],w:oth.length};
  }
  const cols=[...new Set(ids.filter(i=>N(i)&&N(i)!==2).map(C))];
@@ -118,6 +121,8 @@ const A={
 // ---- vistas ----
 const teamName=(s,t)=>s.players.filter((_,k)=>k%2===t).map(p=>p.name).join(' y ')||'—';
 const meldHtml=(m,cls='')=>`<div class="card ${cls}" style="margin:4px 0">${m.ids.length>=7?`<b>${m.w?'Canasta sucia':'Canasta limpia'} </b>`:''}${m.ids.map(i=>T(i)).join('')}</div>`;
+const rnd=(id,k)=>{const x=Math.sin(id*12.9898+k*78.233)*43758.5453;return x-Math.floor(x)};
+const pozoTV=a=>`<div class="pz">${a.map((id,k)=>T(id,'',`left:${(rnd(id,1)*78+2).toFixed(1)}%;top:${(rnd(id,2)*72+2).toFixed(1)}%;transform:rotate(${(rnd(id,3)*80-40).toFixed(0)}deg);z-index:${k}`)).join('')}</div>`;
 function tv(s){
  if(s.phase==='lobby'){
   root.innerHTML=`<div class="tv" style="text-align:center;padding:30px"><h1>BURAKO</h1><p>Escaneá el QR con el celular (2 o 4 jugadores)</p><div id="qr" style="display:inline-block;background:#fff;padding:12px;border-radius:12px"></div><p class="big">${ref.id}</p><h2>${s.players.map(p=>p.name).join(' · ')||'Esperando jugadores…'}</h2></div>`;
@@ -127,7 +132,7 @@ function tv(s){
  const col=t=>`<div><h2>${teamName(s,t)} — ${s.scores[t]}</h2>${s.mt[t]?'<small>Muerto levantado</small>':'<small>Muerto sin levantar</small>'}${s.melds.filter(m=>m.team===t).map(m=>meldHtml(m,'sm')).join('')}</div>`;
  let end='';
  if(s.phase!=='play')end=`<div class="card"><h2>${s.phase==='over'?'¡Fin del juego!':'Fin de la mano'}</h2>${s.result.map(r=>`<p>${teamName(s,r.team)}: ${r.pts>=0?'+':''}${r.pts} → <b>${r.total}</b></p>`).join('')}</div>`;
- root.innerHTML=`<div class="tv"><div class="tvg">${col(0)}<div style="text-align:center"><div class="msg">${s.phase==='play'?'Juega: '+cur.name:''}</div><p>Mazo: ${s.deck.length}</p><h3>Pozo (${s.pozo.length})</h3>${s.pozo.length?T(s.pozo[s.pozo.length-1]):''}<p>${s.msg||''}</p>${end}</div>${col(1)}</div></div>`;
+ root.innerHTML=`<div class="tv"><div class="tvg">${col(0)}<div style="text-align:center"><div class="msg">${s.phase==='play'?'Juega: '+cur.name:''}</div><p>Mazo: ${s.deck.length}</p><h3>Pozo (${s.pozo.length})</h3>${pozoTV(s.pozo)}<p>${s.msg||''}</p>${end}</div>${col(1)}</div></div>`;
 }
 let RK={a:[],b:[]},drag=null;
 try{RK=JSON.parse(localStorage.rk)||RK}catch(e){}
@@ -166,7 +171,7 @@ function phone(s){
  root.innerHTML=`<div style="padding:12px;padding-bottom:40px">
  <div class="msg">${s.phase==='play'?(mine?(s.drawn?'Tu turno: bajá o descartá':'Tu turno: robá'):'Juega '+s.players[s.turn].name):'—'}</div>
  <small>${teamName(s,0)}: ${s.scores[0]} · ${teamName(s,1)}: ${s.scores[1]} · Mazo ${s.deck.length} · Pozo ${s.pozo.length} · Muerto ${s.mt[tm]?'ok':'sin levantar'}</small>${end}
- ${s.pozo.length?`<div class="row"><small>Tope del pozo:</small><div class="sm">${T(s.pozo[s.pozo.length-1])}</div></div>`:''}
+ ${s.pozo.length?`<small>Pozo (${s.pozo.length}) — si levantás, te llevás todas</small><div class="card sm pzp">${s.pozo.map(x=>T(x)).join('')}</div>`:''}
  <h3>Juegos de mi equipo</h3>${my||'<small>Todavía no bajaron nada</small>'}${can&&my?'<small>Tocá un juego para sumar las fichas elegidas</small>':''}
  ${s.phase==='play'&&mine?`<div class="row" style="margin-top:8px"><button ${s.drawn?'disabled':''} onclick="A.draw()">Robar</button><button ${s.drawn?'disabled':''} onclick="A.pozo()">Levantar pozo</button></div><div class="row" style="margin-top:8px"><button ${!s.drawn||!sel.size?'disabled':''} onclick="A.meld([...sel])">Bajar (${sel.size})</button><button class="s" ${!s.drawn||sel.size!==1?'disabled':''} onclick="A.disc([...sel][0])">Descartar</button></div>`:''}
  <div class="row" style="margin-top:10px;justify-content:space-between"><h3>Mi atril</h3><button class="s" onclick="sortRack()">Ordenar</button></div>

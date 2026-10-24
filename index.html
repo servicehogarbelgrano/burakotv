@@ -32,9 +32,12 @@ input{font:inherit;padding:12px;border-radius:10px;border:0;width:100%;margin:8p
 #home button{background:#d43d43;color:#fff}#home .blue{background:#2469b2}#home .good{background:#20865a}#home .secondary{background:#33465d}
 #home input{background:#111923;color:#fff;border:1px solid #3c4c60}.hidden{display:none!important}.muted{color:#aab8c9}
 .t.back{background:#b71c1c;color:#fff;font-size:9px;border-color:#7f0000;letter-spacing:-.5px}
-.mu{display:inline-block;text-align:center;margin:4px 10px 4px 0}.mu.tk{opacity:.35}
+.mu{display:inline-block;padding:3px 6px;border-radius:5px;background:#b71c1c;border:1px solid #7f0000;color:#fff;font-size:10px;font-weight:800;letter-spacing:.5px}.mu.tk{opacity:.3}
 .pile{position:relative;width:64px;height:80px;margin:6px 8px}.pile i{position:absolute;width:52px;height:68px;border-radius:8px;background:#b71c1c;border:2px solid #7f0000;box-shadow:0 2px 4px #0006}
 .pile b{position:absolute;left:6px;top:26px;width:52px;text-align:center;font-size:26px}
+.t.cx{transform:rotate(90deg);margin:0 9px}.t.cx.pure{border-color:#ffd54f;box-shadow:0 0 0 2px #ffd54f88}
+.tv .mt .t{width:34px;height:46px;font-size:19px}
+#tvwrap{transform-origin:0 0}.pz{height:300px!important}
 </style></head><body>
 <div id="errbar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99;background:#c62828;padding:12px;font-size:20px"></div>
 <section id="home" class="screen center">
@@ -151,23 +154,24 @@ const A={
 
 // ---- vistas ----
 const teamName=(s,t)=>s.players.filter((_,k)=>k%2===t).map(p=>p.name).join(' y ')||'—';
-const meldHtml=(m,cls='')=>`<div class="card ${cls}" style="margin:4px 0">${m.ids.length>=7?`<b>${m.w?'Canasta sucia':'Canasta limpia'} </b>`:''}${m.ids.map(i=>T(i)).join('')}</div>`;
+const meldTiles=m=>m.ids.map((x,k)=>T(x,m.ids.length>=7&&k===m.ids.length-1?'cx'+(m.w?'':' pure'):'')).join('');
+const meldHtml=(m,cls='')=>`<div class="card ${cls}" style="margin:4px 0">${meldTiles(m)}</div>`;
 const rnd=(id,k)=>{const x=Math.sin(id*12.9898+k*78.233)*43758.5453;return x-Math.floor(x)};
 const pozoTV=a=>`<div class="pz">${a.map((id,k)=>T(id,'',`left:${(rnd(id,1)*78+2).toFixed(1)}%;top:${(rnd(id,2)*72+2).toFixed(1)}%;transform:rotate(${(rnd(id,3)*80-40).toFixed(0)}deg);z-index:${k}`)).join('')}</div>`;
-const muertosTV=(s,t)=>'<div>'+Array.from({length:s.mtT},(_,k)=>{const tk=k<s.mtn[t];return `<span class="mu ${tk?'tk':''}"><div class="t back">MUERTO</div><small>${tk?'levantado':'sin levantar'}</small></span>`}).join('')+'</div>';
+const muertosTV=(s,t)=>'<span style="display:inline-flex;gap:5px">'+Array.from({length:s.mtT},(_,k)=>`<span class="mu ${k<s.mtn[t]?'tk':''}">MUERTO</span>`).join('')+'</span>';
 const pilesTV=n=>{const p=Math.ceil(n/10);if(!p)return '<div class="msg">¡Mazo vacío! Hay que cortar</div>';let h='';
  for(let k=0;k<p;k++){const c=k===p-1?n-10*k:10;h+=`<div class="pile"><i style="top:8px;left:0"></i><i style="top:4px;left:3px"></i><i style="top:0;left:6px"></i><b>${c}</b></div>`}
  return `<div class="row" style="justify-content:center">${h}</div><small>Montones de 10 fichas</small>${p===1?`<div class="msg">Último montón: quedan ${n} fichas · ¡a cortar!</div>`:''}`};
 function tv(s){
  if(s.phase==='lobby'){
-  root.innerHTML=`<div class="tv" style="text-align:center;padding:30px"><h1>BURAKO</h1><p>Escaneá el QR con el celular (2 o 4 jugadores)</p><div id="qr" style="display:inline-block;background:#fff;padding:12px;border-radius:12px"></div><p class="big">${ref.id}</p><h2>${s.players.map(p=>p.name).join(' · ')||'Esperando jugadores…'}</h2><button class="s" style="font-size:22px" onclick="showRules()">📖 Reglas del juego</button></div>`;
-  new QRCode($('qr'),{text:location.origin+location.pathname+'?r='+ref.id,width:240,height:240});return;
+  document.body.style.overflow='hidden';root.innerHTML=`<div id="tvwrap" class="tv" style="text-align:center;padding:30px"><h1>BURAKO</h1><p>Escaneá el QR con el celular (2 o 4 jugadores)</p><div id="qr" style="display:inline-block;background:#fff;padding:12px;border-radius:12px"></div><p class="big">${ref.id}</p><h2>${s.players.map(p=>p.name).join(' · ')||'Esperando jugadores…'}</h2><button class="s" style="font-size:22px" onclick="showRules()">📖 Reglas del juego</button></div>`;
+  new QRCode($('qr'),{text:location.origin+location.pathname+'?r='+ref.id,width:240,height:240});fit();return;
  }
  const cur=s.players[s.turn];
- const col=t=>`<div><h2>${teamName(s,t)} — ${s.scores[t]}</h2>${muertosTV(s,t)}${s.melds.filter(m=>m.team===t).map(m=>meldHtml(m,'sm')).join('')}</div>`;
+ const col=t=>`<div><h2 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">${teamName(s,t)} — ${s.scores[t]} ${muertosTV(s,t)}</h2>${s.melds.filter(m=>m.team===t).map(m=>meldHtml(m,'mt')).join('')}</div>`;
  let end='';
  if(s.phase!=='play')end=`<div class="card"><h2>${s.phase==='over'?'¡Fin del juego!':'Fin de la mano'}</h2>${s.result.map(r=>`<p>${teamName(s,r.team)}: ${r.pts>=0?'+':''}${r.pts} → <b>${r.total}</b></p>`).join('')}</div>`;
- root.innerHTML=`<div class="tv"><div class="tvg">${col(0)}<div style="text-align:center"><div class="msg">${s.phase==='play'?'Juega: '+cur.name:''}</div><h3>Pozo (${s.pozo.length})</h3>${pozoTV(s.pozo)}<h3>Mazo (${s.deck.length})</h3>${pilesTV(s.deck.length)}<p>${s.msg||''}</p>${end}</div>${col(1)}</div></div>`;
+ document.body.style.overflow='hidden';root.innerHTML=`<div id="tvwrap" class="tv"><div class="tvg">${col(0)}<div style="text-align:center"><div class="msg">${s.phase==='play'?'Juega: '+cur.name:''}</div><h3>Pozo (${s.pozo.length})</h3>${pozoTV(s.pozo)}<h3>Mazo (${s.deck.length})</h3>${pilesTV(s.deck.length)}<p>${s.msg||''}</p>${end}</div>${col(1)}</div></div>`;fit();
 }
 let RK={a:[],b:[]},drag=null;
 try{RK=JSON.parse(localStorage.rk)||RK}catch(e){}
@@ -214,7 +218,7 @@ function phone(s){
  let end='';
  if(s.phase!=='play')end=`<div class="card"><h3>${s.phase==='over'?'¡Fin del juego!':'Fin de la mano'}</h3>${s.result.map(r=>`<p>${teamName(s,r.team)}: ${r.pts>=0?'+':''}${r.pts} → <b>${r.total}</b></p>`).join('')}<button onclick="A.again()">${s.phase==='over'?'Nueva partida':'Siguiente mano'}</button></div>`;
  const can=mine&&s.drawn&&sel.size>0;
- const my=s.melds.filter(m=>m.team===tm).map(m=>`<div class="card sm meld ${can?'tap':''}" data-m="${m.id}" style="margin:4px 0" onclick="addTo(${m.id})">${m.ids.map(x=>T(x)).join('')}</div>`).join('');
+ const my=s.melds.filter(m=>m.team===tm).map(m=>`<div class="card sm meld ${can?'tap':''}" data-m="${m.id}" style="margin:4px 0" onclick="addTo(${m.id})">${meldTiles(m)}</div>`).join('');
  root.innerHTML=`<div style="padding:12px;padding-bottom:40px">
  <div class="msg">${s.phase==='play'?(mine?(s.drawn?'Tu turno: bajá o descartá':'Tu turno: robá'):'Juega '+s.players[s.turn].name):'—'}</div>
  <small>${teamName(s,0)}: ${s.scores[0]} · ${teamName(s,1)}: ${s.scores[1]} · Mazo ${s.deck.length} · Pozo ${s.pozo.length} · Muertos ${s.mtn[tm]}/${s.mtT}</small>${end}
@@ -226,7 +230,13 @@ function phone(s){
  <div id="rack"><div class="rk" data-r="a">${RK.a.map(x=>T(x,sel.has(x)?'sel':'')).join('')}</div><div class="rk" data-r="b">${RK.b.map(x=>T(x,sel.has(x)?'sel':'')).join('')}</div></div></div>`;
  bindRack();
 }
-function render(s){S=s;$('home').classList.add('hidden');if(drag&&drag.moved)return;new URLSearchParams(location.search).get('r')?phone(s):tv(s)}
+function render(s){S=s;$('home').classList.add('hidden');if(drag&&drag.moved)return;
+ if(!new URLSearchParams(location.search).get('r')){
+  if(PV&&s.phase==='play'){const n=x=>x.melds.reduce((a,m)=>a+m.ids.length,0);
+   const ml=s.melds.length>PV.melds.length||n(s)>n(PV),dr=s.pozo.length>PV.pozo.length;
+   if(ml)sndMeld();if(dr)setTimeout(sndDrop,ml?500:0)}
+  PV=s}
+new URLSearchParams(location.search).get('r')?phone(s):tv(s)}
 
 function home(){$('home').classList.remove('hidden')}
 function bajar(){A.meld([...sel])}
@@ -262,17 +272,25 @@ function rpage(){const p=RP[rp];
  $('rules').innerHTML=`<div style="max-width:1000px;margin:0 auto;text-align:center"><small>Página ${rp+1} de ${RP.length}</small><h1 style="margin:6px">${p.t}</h1><p style="font-size:26px;line-height:1.4">${p.x}</p><div class="tv">${p.g.map(g=>`<div class="exg">${g[0].map(i=>T(i)).join('')}<div>${g[1]}</div></div>`).join('')}</div><div class="row" style="justify-content:center;margin-top:22px"><button class="s" onclick="rgo(-1)" ${rp?'':'disabled'}>◀ Anterior</button><button class="s" onclick="rvoz()">${rv?'🔊 Voz':'🔇 Voz'}</button><button id="rnext" onclick="rgo(1)">${rp<RP.length-1?'Siguiente ▶':'Listo ✔'}</button><button class="s" onclick="closeRules()">✖ Cerrar</button></div></div>`;
  speak(p.x);$('rnext').focus()}
 document.addEventListener('keydown',e=>{if($('rules').style.display!=='block')return;if(e.key==='ArrowRight')rgo(1);if(e.key==='ArrowLeft')rgo(-1);if(e.key==='Escape')closeRules()});
-$('hostBtn').onclick=()=>makeRoom();
+$('hostBtn').onclick=()=>{audio();makeRoom()};
 $('showJoinBtn').onclick=()=>$('joinBox').classList.toggle('hidden');
 $('joinBtn').onclick=()=>goRoom();
 $('rulesBtn').onclick=()=>showRules();
-Object.assign(window,{A,makeRoom,goRoom,showRules,closeRules,rgo,rvoz,sortRack,addTo,zm,bajar,descartar});
-// ---- tamaño en TV ----
-function zm(d){const z=Math.min(2,Math.max(.4,(+localStorage.zm||1)+d));localStorage.zm=z;document.body.style.zoom=z}
-if(!new URLSearchParams(location.search).get('r')){
- if(localStorage.zm)document.body.style.zoom=+localStorage.zm;
- const b=document.createElement('div');b.style.cssText='position:fixed;right:10px;bottom:10px;z-index:60;display:flex;gap:6px';
- b.innerHTML='<button class="s" onclick="zm(-.1)">A−</button><button class="s" onclick="zm(.1)">A+</button>';document.body.appendChild(b)}
+Object.assign(window,{A,makeRoom,goRoom,showRules,closeRules,rgo,rvoz,sortRack,addTo,bajar,descartar});
+// ---- ajuste automático a la pantalla (TV) ----
+function fit(){const w=$('tvwrap');if(!w)return;let sc=1;
+ for(let i=0;i<20;i++){w.style.width=(innerWidth/sc)+'px';w.style.transform=sc<1?'scale('+sc+')':'none';
+  if((w.offsetHeight*sc<=innerHeight-4&&w.scrollWidth<=w.clientWidth+1)||sc<=.3)break;sc=Math.round((sc-.05)*100)/100}}
+addEventListener('resize',()=>{if(!new URLSearchParams(location.search).get('r'))fit()});
+// ---- sonidos (se generan, no hay archivos) ----
+let AC=null,PV=null;
+function audio(){try{if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume()}catch(e){}}
+function osc(t,f,f2,d,v,type){if(!AC)return;const o=AC.createOscillator(),g=AC.createGain(),T0=AC.currentTime+t;
+ o.type=type;o.frequency.setValueAtTime(f,T0);o.frequency.exponentialRampToValueAtTime(f2,T0+d*.8);
+ g.gain.setValueAtTime(v,T0);g.gain.exponentialRampToValueAtTime(.001,T0+d);o.connect(g);g.connect(AC.destination);o.start(T0);o.stop(T0+d+.02)}
+const sndDrop=()=>{osc(0,260,110,.14,.5,'triangle');osc(0,1500,700,.04,.12,'square')};
+const sndMeld=()=>{[300,360,430].forEach((f,k)=>{osc(k*.08,f,f*.5,.12,.4,'triangle');osc(k*.08,1500,800,.03,.08,'square')});osc(.26,660,660,.35,.18,'sine');osc(.36,880,880,.45,.18,'sine')};
+document.addEventListener('click',audio);document.addEventListener('keydown',audio);
 // ---- arranque ----
 signInAnonymously(auth).then(async u=>{
  me=u.user.uid;const r=new URLSearchParams(location.search).get('r');

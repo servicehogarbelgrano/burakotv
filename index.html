@@ -38,6 +38,11 @@ input{font:inherit;padding:12px;border-radius:10px;border:0;width:100%;margin:8p
 .t.cx{transform:rotate(90deg);margin:0 9px}.t.cx.pure{border-color:#ffd54f;box-shadow:0 0 0 2px #ffd54f88}
 .tv .mt .t{width:34px;height:46px;font-size:19px}
 #tvwrap{transform-origin:0 0}.pz{height:300px!important}
+.brow{display:flex;gap:6px;flex-wrap:nowrap}.brow button{flex:1;min-width:0;padding:12px 2px;font-size:13px;white-space:nowrap}
+#ytbox{position:fixed;right:8px;bottom:8px;width:260px;height:146px;z-index:40;border-radius:10px;overflow:hidden;border:2px solid #ffffff55;display:none;background:#000}
+#ytbox iframe{width:100%;height:100%;border:0}
+#ytfab{position:fixed;right:10px;bottom:10px;z-index:30;width:46px;height:46px;border-radius:50%;padding:0;font-size:22px}
+#ytp{display:none;position:fixed;left:0;right:0;top:0;bottom:0;background:#0b5d3bfa;z-index:60;overflow:auto;padding:20px}
 </style></head><body>
 <div id="errbar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99;background:#c62828;padding:12px;font-size:20px"></div>
 <section id="home" class="screen center">
@@ -54,7 +59,16 @@ input{font:inherit;padding:12px;border-radius:10px;border:0;width:100%;margin:8p
     <button id="rulesBtn" class="secondary">📖 Reglas del juego</button>
   </div>
 </section>
-<div id="root"></div><div id="rules"></div>
+<div id="root"></div><div id="rules"></div><div id="ytbox"></div>
+<button id="ytfab" class="s hidden">📺</button>
+<div id="ytp"><div style="max-width:460px;margin:0 auto"><h2>📺 Canal de TV en vivo</h2>
+<p class="muted">Pegá el link de YouTube del canal o del video en vivo. Se ve chiquito en una esquina de la TV.</p>
+<input id="ytin" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off">
+<div class="stack" style="display:flex;flex-direction:column;gap:10px">
+<button id="ytset">Poner / cambiar el video</button>
+<button id="ytmute" class="s">🔊 Activar / quitar el sonido</button>
+<button id="ytoff" class="s">Quitar el video</button>
+<button id="ytclose" class="s">Cerrar</button></div></div></div>
 <script>
 window.onerror=function(m,src,l){var e=document.getElementById('errbar');e.style.display='block';e.textContent='⚠️ '+m+(l?' (línea '+l+')':'')};
 </script><div id="toast"></div>
@@ -105,29 +119,35 @@ const idx=s=>s.players.findIndex(p=>p.uid===me);
 const hasCan=(s,tm)=>s.melds.some(m=>m.team===tm&&m.ids.length>=7);
 function turnChk(s,u){const i=s.players.findIndex(p=>p.uid===u);if(i<0||s.turn!==i)throw Error('No es tu turno');return i}
 function nextT(s){s.turn=(s.turn+1)%s.players.length;s.drawn=false}
-function after(s,i,disc){
+function after(s,i,disc,cutId){
  const u=s.players[i].uid,tm=i%2,h=s.hands[u];
  if(h.length===0){
   if(s.mtn[tm]<s.mtT){s.hands[u]=s.muertos[tm+'_'+s.mtn[tm]];s.mtn[tm]++;s.msg+=' ¡Levantó el muerto'+(s.mtT>1?' ('+s.mtn[tm]+' de '+s.mtT+')':'')+'!';if(disc)nextT(s);return}
   if(!hasCan(s,tm))throw Error('Para cerrar necesitás una canasta: guardate una ficha');
+  s.cutId=cutId===undefined?null:cutId;
   return endHand(s,tm);
  }
  if(disc)nextT(s);
 }
 function endHand(s,closer){
+ s.closer=closer;if(closer===null)s.cutId=null;
  const res=[0,1].map(tm=>{
-  let p=s.melds.filter(m=>m.team===tm).reduce((a,m)=>a+m.ids.reduce((b,i)=>b+V(i),0)+(m.ids.length>=7?(m.w?100:200):0),0);
+  const mine=s.melds.filter(m=>m.team===tm);
+  const mp=mine.reduce((a,m)=>a+m.ids.reduce((b,i)=>b+V(i),0),0),cb=mine.reduce((a,m)=>a+(m.ids.length>=7?(m.w?100:200):0),0);
+  const noCan=closer!==null&&closer!==tm&&!hasCan(s,tm);
+  let p=noCan?-mp:mp+cb;
   p+=s.mtn[tm]*100-(s.mtT-s.mtn[tm])*100;if(closer===tm)p+=100;
   s.players.forEach((pl,k)=>{if(k%2===tm)p-=(s.hands[pl.uid]||[]).reduce((a,i)=>a+V(i),0)});
-  s.scores[tm]+=p;return{team:tm,pts:p,total:s.scores[tm]};
+  s.scores[tm]+=p;return{team:tm,pts:p,total:s.scores[tm],noCan};
  });
+s.winner=res[0].pts===res[1].pts?-1:(res[0].pts>res[1].pts?0:1);
  s.result=res;s.phase=res.some(r=>r.total>=3000)?'over':'end';
 }
 function deal(s){
  const a=[...Array(106).keys()];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}
  s.hands={};s.players.forEach(p=>s.hands[p.uid]=a.splice(0,11));
  s.mtT=s.players.length===2?2:1;s.muertos={};[0,1].forEach(t=>{for(let k=0;k<s.mtT;k++)s.muertos[t+'_'+k]=a.splice(0,11)});s.mtn=[0,0];
- s.pozo=a.splice(0,1);s.deck=a;s.melds=[];s.phase='play';s.drawn=false;s.result=null;
+ s.cutId=null;s.closer=null;s.winner=-1;s.pozo=a.splice(0,1);s.deck=a;s.melds=[];s.phase='play';s.drawn=false;s.result=null;
  s.turn=((s.hand=(s.hand||0)+1)-1)%s.players.length;s.msg='¡Nueva mano!';
 }
 // acciones de juego (valen para personas y para la máquina; u = uid del jugador)
@@ -147,10 +167,27 @@ const M={
   s.hands[u]=s.hands[u].filter(x=>!ids.includes(x));Object.assign(m,inf);
   s.msg=s.players[i].name+' agregó fichas';after(s,i,false)},
  disc(s,u,id){const i=turnChk(s,u);if(!s.drawn)throw Error('Primero robá');
-  s.hands[u]=s.hands[u].filter(x=>x!==id);s.pozo.push(id);s.msg=s.players[i].name+' descartó';after(s,i,true)}
+  s.hands[u]=s.hands[u].filter(x=>x!==id);s.pozo.push(id);s.msg=s.players[i].name+' descartó';after(s,i,true,id)},
+ cut(s,u,id){const i=turnChk(s,u);if(!s.drawn)throw Error('Primero robá');const tm=i%2,h=s.hands[u];
+  if(h.length!==2||!h.includes(id))throw Error('Para cortar con una ficha tenés que tener 2 en el atril');
+  if(s.mtn[tm]<s.mtT)throw Error('Primero tenés que levantar todos los muertos');
+  if(!hasCan(s,tm))throw Error('Para cortar necesitás una canasta');
+  const rest=h.find(x=>x!==id);if(!(N(rest)>=1&&N(rest)<5))throw Error('La ficha que te queda tiene que ser menor a 5');
+  s.hands[u]=[rest];s.pozo.push(id);s.msg=s.players[i].name+' cortó';s.cutId=id;endHand(s,tm)}
 };
 const pushBot=s=>{const n=s.players.filter(p=>p.bot).length+1;s.players.push({uid:'bot-'+n,name:'Máquina'+(n>1?' '+n:''),bot:true})};
+const YT0='';// opcional: link por defecto del canal (se puede cambiar desde el celular)
+function parseYT(u){u=(u||'').trim();let m;
+ if(/^[\w-]{11}$/.test(u))return{t:'v',id:u};
+ if(m=u.match(/youtu\.be\/([\w-]{11})/))return{t:'v',id:m[1]};
+ if(m=u.match(/[?&]v=([\w-]{11})/))return{t:'v',id:m[1]};
+ if(m=u.match(/youtube\.com\/(?:live|embed|shorts)\/([\w-]{11})/))return{t:'v',id:m[1]};
+ if(m=u.match(/youtube\.com\/channel\/(UC[\w-]{22})/))return{t:'c',id:m[1]};
+ return null}
 const A={
+ yt(url){const y=parseYT(url);if(!y)return toast('No entendí ese link de YouTube');act(s=>{s.yt={...y,mute:s.yt?s.yt.mute!==false:true}})},
+ ytMute(){act(s=>{if(s.yt)s.yt.mute=!(s.yt.mute!==false)})},
+ ytOff(){act(s=>{s.yt=null})},
  join(name){act(s=>{if(s.phase!=='lobby')throw Error('Ya empezó');if(idx(s)<0){if(s.players.length>=4)throw Error('Sala llena');s.players.push({uid:me,name})}})},
  addBot(){act(s=>{if(s.phase!=='lobby')throw Error('Ya empezó');if(s.players.length>=4)throw Error('Sala llena');pushBot(s)})},
  solo(k){act(s=>{if(s.players.length!==1)throw Error('Para jugar solo tiene que haber un solo jugador en la sala');for(let j=0;j<k;j++)pushBot(s);s.scores=[0,0];s.hand=0;deal(s)},false)},
@@ -160,17 +197,18 @@ const A={
  pozo(){act(s=>M.pozo(s,me))},
  meld(ids){act(s=>M.meld(s,me,ids))},
  add(mid,ids){act(s=>M.add(s,me,mid,ids))},
- disc(id){act(s=>M.disc(s,me,id))}
+ disc(id){act(s=>M.disc(s,me,id))},
+ cut(id){act(s=>M.cut(s,me,id))}
 };
 
 // ---- la máquina (la juega la TV, un paso por vez) ----
-function bestMeld(h){
+function bestMeld(h,noP){
  const wild=h.filter(t=>N(t)===0||N(t)===2).sort((a,b)=>N(b)-N(a));
  let best=null,bs=0;
  const consider=(ids,pen)=>{if(ids.length<3)return;const inf=meldInfo(ids);if(!inf)return;const sc=ids.length-pen;if(sc>bs){bs=sc;best=inf.ids}};
- for(let g=1;g<=13;g++){const t=h.filter(x=>N(x)===g);
-  if(t.length>=3)consider(t,0);
-  else if(t.length===2){const w=wild.find(x=>N(x)!==g);if(w!==undefined)consider([...t,w],1.5)}}
+ if(!noP)for(let g=1;g<=13;g++){const t=h.filter(x=>N(x)===g);
+  if(t.length>=3)consider(t,1.2);
+  else if(t.length===2){const w=wild.find(x=>N(x)!==g);if(w!==undefined)consider([...t,w],2.7)}}
  for(let c=0;c<4;c++)for(let st=1;st<=12;st++)for(let L=3;st+L-1<=14;L++){
   const ids=[];let miss=0;
   for(let p=0;p<L;p++){const n=st+p>13?1:st+p;const t=h.find(x=>C(x)===c&&N(x)===n&&!ids.includes(x));if(t!==undefined)ids.push(t);else miss++}
@@ -187,8 +225,11 @@ function keepScore(t,h){
  return sc-V(t)/10;
 }
 function botDiscard(s,u){
- const h=s.hands[u];
- const order=[...h].sort((a,b)=>keepScore(a,h)-keepScore(b,h));
+ const h=s.hands[u],tm=s.players.findIndex(p=>p.uid===u)%2;
+ const opp=s.melds.filter(m=>m.team!==tm);
+ const helps=t=>opp.some(m=>{const inf=meldInfo([...m.ids,t]);return inf&&inf.w<=m.w});
+ const key=new Map(h.map(t=>[t,(helps(t)?100000:0)+keepScore(t,h)]));
+ const order=[...h].sort((a,b)=>key.get(a)-key.get(b));
  for(const t of order){
   try{const c=JSON.parse(JSON.stringify(s));M.disc(c,u,t);Object.keys(s).forEach(k=>delete s[k]);Object.assign(s,c);return}catch(e){}
  }
@@ -198,7 +239,7 @@ function botStep(s,u){
  const i=s.players.findIndex(p=>p.uid===u),tm=i%2,h=s.hands[u];
  if(!s.drawn){
   const top=s.pozo[s.pozo.length-1];
-  if(top!==undefined&&s.pozo.length<=6){const b=bestMeld([...h,top]);if(b&&b.includes(top))return M.pozo(s,u)}
+  if(top!==undefined&&s.pozo.length<=6){const b=bestMeld([...h,top],s.melds.some(m=>m.team===tm&&m.t==='p'));if(b&&b.includes(top))return M.pozo(s,u)}
   return M.draw(s,u);
  }
  const mk=s.mtn[tm]===s.mtT,can=hasCan(s,tm);
@@ -208,8 +249,9 @@ function botStep(s,u){
    const inf=meldInfo([...m.ids,t]);
    if(inf&&inf.w<=m.w&&ok(h.length-1,inf.ids.length>=7))return M.add(s,u,m.id,[t]);
   }}
- const b=bestMeld(h);
+ const b=bestMeld(h,s.melds.some(m=>m.team===tm&&m.t==='p'));
  if(b&&ok(h.length-b.length,b.length>=7))return M.meld(s,u,b);
+ if(h.length===2&&mk&&can){for(const t of h){const o=h.find(x=>x!==t);if(N(o)>=1&&N(o)<5)return M.cut(s,u,t)}}
  return botDiscard(s,u);
 }
 let botBusy=false,botErr=0;
@@ -226,7 +268,8 @@ const teamName=(s,t)=>s.players.filter((_,k)=>k%2===t).map(p=>p.name).join(' y '
 const meldTiles=m=>m.ids.map((x,k)=>T(x,m.ids.length>=7&&k===m.ids.length-1?'cx'+(m.w?'':' pure'):'')).join('');
 const meldHtml=(m,cls='')=>`<div class="card ${cls}" style="margin:4px 0">${meldTiles(m)}</div>`;
 const rnd=(id,k)=>{const x=Math.sin(id*12.9898+k*78.233)*43758.5453;return x-Math.floor(x)};
-const pozoTV=a=>`<div class="pz">${a.map((id,k)=>T(id,'',`left:${(rnd(id,1)*78+2).toFixed(1)}%;top:${(rnd(id,2)*72+2).toFixed(1)}%;transform:rotate(${(rnd(id,3)*80-40).toFixed(0)}deg);z-index:${k}`)).join('')}</div>`;
+const endHead=s=>(s.closer!==null&&s.closer!==undefined?'¡SE CORTÓ!':'Se terminó el mazo')+' · '+(s.winner>=0?'Ganó la mano: '+teamName(s,s.winner):'Empate');
+const pozoTV=(a,cut)=>`<div class="pz">${a.map((id,k)=>(st=>id===cut?`<div class="t back" style="color:#fff;${st}">CORTE</div>`:T(id,'',st))(`left:${(rnd(id,1)*78+2).toFixed(1)}%;top:${(rnd(id,2)*72+2).toFixed(1)}%;transform:rotate(${(rnd(id,3)*80-40).toFixed(0)}deg);z-index:${k}`)).join('')}</div>`;
 const muertosTV=(s,t)=>'<span style="display:inline-flex;gap:5px">'+Array.from({length:s.mtT},(_,k)=>`<span class="mu ${k<s.mtn[t]?'tk':''}">MUERTO</span>`).join('')+'</span>';
 const pilesTV=n=>{const p=Math.ceil(n/10);if(!p)return '<div class="msg">¡Mazo vacío! Hay que cortar</div>';let h='';
  for(let k=0;k<p;k++){const c=k===p-1?n-10*k:10;h+=`<div class="pile"><i style="top:8px;left:0"></i><i style="top:4px;left:3px"></i><i style="top:0;left:6px"></i><b>${c}</b></div>`}
@@ -239,8 +282,8 @@ function tv(s){
  const cur=s.players[s.turn];
  const col=t=>`<div><h2 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">${teamName(s,t)} — ${s.scores[t]} ${muertosTV(s,t)}</h2>${s.melds.filter(m=>m.team===t).map(m=>meldHtml(m,'mt')).join('')}</div>`;
  let end='';
- if(s.phase!=='play')end=`<div class="card"><h2>${s.phase==='over'?'¡Fin del juego!':'Fin de la mano'}</h2>${s.result.map(r=>`<p>${teamName(s,r.team)}: ${r.pts>=0?'+':''}${r.pts} → <b>${r.total}</b></p>`).join('')}</div>`;
- document.body.style.overflow='hidden';root.innerHTML=`<div id="tvwrap" class="tv"><div class="tvg">${col(0)}<div style="text-align:center"><div class="msg">${s.phase==='play'?'Juega: '+cur.name:''}</div><h3>Pozo (${s.pozo.length})</h3>${pozoTV(s.pozo)}<h3>Mazo (${s.deck.length})</h3>${pilesTV(s.deck.length)}<p>${s.msg||''}</p>${end}</div>${col(1)}</div></div>`;fit();
+ if(s.phase!=='play')end=`<div class="card"><h2>${s.phase==='over'?'¡Fin del juego!':'Fin de la mano'}</h2><div class="msg">${endHead(s)}</div>${s.result.map(r=>`<p>${teamName(s,r.team)}: ${r.pts>=0?'+':''}${r.pts} → <b>${r.total}</b>${r.noCan?' <small>(sin canasta: lo bajado resta)</small>':''}</p>`).join('')}</div>`;
+ document.body.style.overflow='hidden';root.innerHTML=`<div id="tvwrap" class="tv"><div class="tvg">${col(0)}<div style="text-align:center"><div class="msg">${s.phase==='play'?'Juega: '+cur.name:''}</div><h3>Pozo (${s.pozo.length})</h3>${pozoTV(s.pozo,s.cutId)}<h3>Mazo (${s.deck.length})</h3>${pilesTV(s.deck.length)}<p>${s.msg||''}</p>${end}</div>${col(1)}</div></div>`;fit();
 }
 let RK={a:[],b:[]},drag=null;
 try{RK=JSON.parse(localStorage.rk)||RK}catch(e){}
@@ -251,14 +294,11 @@ function addTo(id){const i=idx(S);if(S.turn!==i||!S.drawn||!sel.size)return toas
 function clearHi(){document.querySelectorAll('.over').forEach(x=>x.classList.remove('over'));document.querySelectorAll('.t').forEach(t=>t.style.removeProperty('--gx'))}
 function bindRack(){
  const r=$('rack');
- r.onpointerdown=e=>{const el=e.target.closest('.t');if(!el)return;
-  const cells=[...document.querySelectorAll('.rk,.meld')].map(c=>({c,r:c.getBoundingClientRect(),tl:[...c.querySelectorAll('.t')].filter(t=>t!==el).map(t=>({t,r:t.getBoundingClientRect()}))}));
-  drag={el,id:+el.dataset.i,x:e.clientX,y:e.clientY,moved:false,cells,tg:null};el.setPointerCapture(e.pointerId)};
- r.onpointermove=e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
-  if(!drag.moved&&Math.hypot(dx,dy)>8)drag.moved=true;
-  if(!drag.moved)return;
-  drag.el.style.transform=`translate(${dx}px,${dy}px) scale(1.15)`;drag.el.style.zIndex=9;drag.el.style.transition='none';
-  const X=e.clientX,Y=e.clientY,P=8;
+ const pg=rc=>({left:rc.left+scrollX,right:rc.right+scrollX,top:rc.top+scrollY,bottom:rc.bottom+scrollY,width:rc.width});
+ const upd=()=>{if(!drag||!drag.moved)return;
+  const X=drag.cx+scrollX,Y=drag.cy+scrollY;
+  drag.el.style.transform=`translate(${X-drag.sx}px,${Y-drag.sy}px) scale(1.15)`;drag.el.style.zIndex=9;drag.el.style.transition='none';
+  const P=8;
   const cell=drag.cells.find(o=>X>=o.r.left-P&&X<=o.r.right+P&&Y>=o.r.top-P&&Y<=o.r.bottom+P);
   const tg=cell?{cell,k:(i=>i<0?cell.tl.length:i)(cell.tl.findIndex(o=>Y<o.r.bottom&&(Y<o.r.top||X<o.r.left+o.r.width/2)))}:null;
   const same=tg&&drag.tg&&tg.cell===drag.tg.cell&&tg.k===drag.tg.k;
@@ -266,7 +306,18 @@ function bindRack(){
   clearHi();drag.tg=tg;if(!tg)return;
   tg.cell.c.classList.add('over');
   tg.cell.tl.forEach((o,i)=>{if(i>=tg.k)o.t.style.setProperty('--gx','34px')})};
- r.onpointerup=e=>{if(!drag)return;const d=drag;drag=null;clearHi();
+ const loop=()=>{if(!drag||!drag.moved)return;
+  const E=90;let dy=0;
+  if(drag.cy<E)dy=-Math.ceil((E-drag.cy)/5);else if(drag.cy>innerHeight-E)dy=Math.ceil((drag.cy-(innerHeight-E))/5);
+  if(dy)window.scrollBy(0,dy);
+  upd();drag.raf=requestAnimationFrame(loop)};
+ r.onpointerdown=e=>{const el=e.target.closest('.t');if(!el)return;
+  const cells=[...document.querySelectorAll('.rk,.meld')].map(c=>({c,r:pg(c.getBoundingClientRect()),tl:[...c.querySelectorAll('.t')].filter(t=>t!==el).map(t=>({t,r:pg(t.getBoundingClientRect())}))}));
+  drag={el,id:+el.dataset.i,x:e.clientX,y:e.clientY,cx:e.clientX,cy:e.clientY,sx:e.clientX+scrollX,sy:e.clientY+scrollY,moved:false,cells,tg:null,raf:0};el.setPointerCapture(e.pointerId)};
+ r.onpointermove=e=>{if(!drag)return;drag.cx=e.clientX;drag.cy=e.clientY;
+  if(!drag.moved&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>8){drag.moved=true;drag.raf=requestAnimationFrame(loop)}
+  upd()};
+ r.onpointerup=e=>{if(!drag)return;const d=drag;drag=null;cancelAnimationFrame(d.raf);clearHi();
   if(!d.moved){sel.has(d.id)?sel.delete(d.id):sel.add(d.id);return phone(S)}
   const tg=d.tg;
   if(tg&&tg.cell.c.classList.contains('meld')){A.add(+tg.cell.c.dataset.m,sel.has(d.id)?[...sel]:[d.id]);return phone(S)}
@@ -274,7 +325,7 @@ function bindRack(){
    const L=RK[tg.cell.c.dataset.r],o=tg.cell.tl[tg.k];const k=o?L.indexOf(+o.t.dataset.i):-1;k>=0?L.splice(k,0,d.id):L.push(d.id);
    localStorage.rk=JSON.stringify(RK)}
   phone(S)};
- r.onpointercancel=()=>{drag=null;clearHi();phone(S)};
+ r.onpointercancel=()=>{if(drag)cancelAnimationFrame(drag.raf);drag=null;clearHi();phone(S)};
 }
 function phone(s){
  const i=idx(s);
@@ -285,15 +336,16 @@ function phone(s){
  if(i<0){root.innerHTML='<p style="padding:20px">Partida en curso.</p>';return}
  const h=s.hands[me]||[],mine=s.turn===i,tm=i%2;syncRack(h);sel=new Set([...sel].filter(x=>h.includes(x)));
  let end='';
- if(s.phase!=='play')end=`<div class="card"><h3>${s.phase==='over'?'¡Fin del juego!':'Fin de la mano'}</h3>${s.result.map(r=>`<p>${teamName(s,r.team)}: ${r.pts>=0?'+':''}${r.pts} → <b>${r.total}</b></p>`).join('')}<button onclick="A.again()">${s.phase==='over'?'Nueva partida':'Siguiente mano'}</button></div>`;
+ if(s.phase!=='play')end=`<div class="card"><h3>${s.phase==='over'?'¡Fin del juego!':'Fin de la mano'}</h3><div class="msg">${endHead(s)}</div>${s.result.map(r=>`<p>${teamName(s,r.team)}: ${r.pts>=0?'+':''}${r.pts} → <b>${r.total}</b>${r.noCan?' <small>(sin canasta: lo bajado resta)</small>':''}</p>`).join('')}<button onclick="A.again()">${s.phase==='over'?'Nueva partida':'Siguiente mano'}</button></div>`;
  const can=mine&&s.drawn&&sel.size>0;
+ const canCut=mine&&s.drawn&&s.phase==='play'&&sel.size===1&&h.length===2&&s.mtn[tm]===s.mtT&&hasCan(s,tm)&&(o=>o!==undefined&&N(o)>=1&&N(o)<5)(h.find(x=>!sel.has(x)));
  const my=s.melds.filter(m=>m.team===tm).map(m=>`<div class="card sm meld ${can?'tap':''}" data-m="${m.id}" style="margin:4px 0" onclick="addTo(${m.id})">${meldTiles(m)}</div>`).join('');
- root.innerHTML=`<div style="padding:12px;padding-bottom:40px">
+ root.innerHTML=`<div style="padding:12px;padding-bottom:80px">
  <div class="msg">${s.phase==='play'?(mine?(s.drawn?'Tu turno: bajá o descartá':'Tu turno: robá'):'Juega '+s.players[s.turn].name):'—'}</div>
- <small>${teamName(s,0)}: ${s.scores[0]} · ${teamName(s,1)}: ${s.scores[1]} · Mazo ${s.deck.length} · Pozo ${s.pozo.length} · Muertos ${s.mtn[tm]}/${s.mtT}</small>${end}
- ${s.pozo.length?`<small>Pozo (${s.pozo.length}) — si levantás, te llevás todas</small><div class="card sm pzp">${s.pozo.map(x=>T(x)).join('')}</div>`:''}
+ ${end}
+ ${s.pozo.length?`<div class="card sm pzp">${s.pozo.map(x=>x===s.cutId?'<div class="t back">CORTE</div>':T(x)).join('')}</div>`:''}
  <h3>Juegos de mi equipo</h3>${my||'<small>Todavía no bajaron nada</small>'}${can&&my?'<small>Tocá un juego para sumar las fichas elegidas</small>':''}
- ${s.phase==='play'&&mine?`<div class="row" style="margin-top:8px"><button ${s.drawn?'disabled':''} onclick="A.draw()">Robar</button><button ${s.drawn?'disabled':''} onclick="A.pozo()">Levantar pozo</button></div><div class="row" style="margin-top:8px"><button ${!s.drawn||!sel.size?'disabled':''} onclick="bajar()">Bajar (${sel.size})</button><button class="s" ${!s.drawn||sel.size!==1?'disabled':''} onclick="descartar()">Descartar</button></div>`:''}
+ ${s.phase==='play'&&mine?`<div class="brow" style="margin-top:8px"><button ${s.drawn?'disabled':''} onclick="A.draw()">Robar</button><button ${s.drawn?'disabled':''} onclick="A.pozo()">Pozo</button><button ${!s.drawn||!sel.size?'disabled':''} onclick="bajar()">Bajar (${sel.size})</button><button class="s" ${!s.drawn||sel.size!==1?'disabled':''} onclick="descartar()">Descartar</button>${canCut?'<button onclick="cortar()">✂ Cortar</button>':''}</div>`:''}
  <div class="row" style="margin-top:10px;justify-content:space-between"><h3>Mi atril</h3><button class="s" onclick="sortRack()">Ordenar</button></div>
  <small>Tocá para elegir · arrastrá para mover (hay 2 filas)</small>
  <div id="rack"><div class="rk" data-r="a">${RK.a.map(x=>T(x,sel.has(x)?'sel':'')).join('')}</div><div class="rk" data-r="b">${RK.b.map(x=>T(x,sel.has(x)?'sel':'')).join('')}</div></div></div>`;
@@ -305,11 +357,12 @@ function render(s){S=s;$('home').classList.add('hidden');if(drag&&drag.moved)ret
    const ml=n(s)>n(PV),dr=(s.pozo||[]).length>(PV.pozo||[]).length;
    if(ml)sndMeld();if(dr)setTimeout(sndDrop,ml?500:0)}
   PV=s}
-new URLSearchParams(location.search).get('r')?phone(s):(tv(s),botSchedule(s))}
+new URLSearchParams(location.search).get('r')?phone(s):(tv(s),botSchedule(s),ytSync(s.yt!==undefined?s.yt:(parseYT(YT0)?{...parseYT(YT0),mute:true}:null)))}
 
 function home(){$('home').classList.remove('hidden')}
 function bajar(){A.meld([...sel])}
 function descartar(){A.disc([...sel][0])}
+function cortar(){A.cut([...sel][0])}
 async function makeRoom(){
  $('home').classList.add('hidden');
  const AL='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',rb=crypto.getRandomValues(new Uint8Array(6)),code=[...rb].map(x=>AL[x%AL.length]).join('');ref=doc(db,'burako',code);
@@ -328,8 +381,8 @@ const RP=[
 {t:'Piernas',x:'Una pierna son 3 o más fichas del mismo número. Pueden ser de distinto color, y también se pueden repetir colores. Se permite un solo comodín por juego.',g:[[[tid(7,0),tid(7,1),tid(7,2)],'Pierna'],[[tid(3,0),tid(3,0)+52,tid(3,1),tid(3,2)],'También vale repetir color'],[[tid(9,3),tid(9,0),J],'Con un comodín']]},
 {t:'Escaleras',x:'Una escalera son 3 o más fichas del mismo color, en orden. El 1 puede ir antes del 2 o después del 13. Si falta una ficha en el medio, un comodín ocupa su lugar. Un juego solo puede tener un comodín. Un 2 del mismo color puesto en su lugar vale como ficha común y no como comodín.',g:[[run(4,7,1),'Escalera'],[[tid(4,2),tid(5,2),J,tid(7,2)],'El comodín tapa el 6'],[[tid(12,0),tid(13,0),tid(1,0)],'El 1 va después del 13'],[run(1,3,3),'o antes del 2']]},
 {t:'Canastas',x:'Una canasta es un juego de 7 o más fichas. Si no tiene ningún comodín es una canasta limpia y suma 200 puntos. Si usa un comodín es una canasta sucia y suma 100 puntos.',g:[[run(3,9,0),'Limpia: 200 puntos'],[[...run(3,5,2),J,...run(7,9,2)],'Sucia: 100 puntos']]},
-{t:'El muerto y cerrar',x:'Cuando te quedás sin fichas, levantás un muerto y seguís jugando. Con 2 jugadores tenés dos muertos: tenés que quedarte sin fichas dos veces antes de poder cortar. Cada muerto levantado suma 100 puntos y cada uno que no levantás resta 100. Para cerrar la mano tenés que haber levantado todos tus muertos y tener al menos una canasta. Cerrar suma 100 puntos.',g:[]},
-{t:'Puntos de cada mano',x:'Al terminar la mano se suman las fichas que bajaste a la mesa, las canastas, el muerto y el cierre. Se restan las fichas que te quedaron en el atril. Se juega hasta que un equipo llega a 3000 puntos.',g:[]},
+{t:'El muerto y cerrar',x:'Cuando te quedás sin fichas, levantás un muerto y seguís jugando. Con 2 jugadores tenés dos muertos: tenés que quedarte sin fichas dos veces antes de poder cortar. Cada muerto levantado suma 100 puntos y cada uno que no levantás resta 100. Para cerrar la mano tenés que haber levantado todos tus muertos y tener al menos una canasta. Cerrar suma 100 puntos. También se puede cortar quedándote con una sola ficha en el atril, siempre que sea menor a 5. La última ficha que se tira queda dada vuelta en la mesa y se anuncia quién ganó la mano.',g:[]},
+{t:'Puntos de cada mano',x:'Al terminar la mano se suman las fichas que bajaste a la mesa, las canastas, el muerto y el cierre. Se restan las fichas que te quedaron en el atril. Si el rival cierra y tu equipo no armó ninguna canasta, lo que bajaste también se resta en lugar de sumarse. Se juega hasta que un equipo llega a 3000 puntos.',g:[]},
 {t:'Cómo se juega desde el celular',x:'Tocá una ficha para elegirla y apretá el botón Bajar para formar un juego. Para agregar a un juego que ya está en la mesa, arrastrá la ficha hasta ese juego y soltala. Podés mover las fichas del atril, que tiene dos filas, arrastrándolas. Cuando tengas tu turno, el celular te avisa.',g:[]}];
 let rp=0,rv=true,RA=null;
 function stopAudio(){if(RA){RA.onerror=null;try{RA.pause()}catch(e){}RA=null}if(window.speechSynthesis)speechSynthesis.cancel()}
@@ -350,10 +403,23 @@ function rpage(){const p=RP[rp];
  playRule(rp+1,p.x);$('rnext').focus()}
 document.addEventListener('keydown',e=>{if($('rules').style.display!=='block')return;if(e.key==='ArrowRight')rgo(1);if(e.key==='ArrowLeft')rgo(-1);if(e.key==='Escape')closeRules()});
 $('hostBtn').onclick=()=>{audio();makeRoom()};
+if(new URLSearchParams(location.search).get('r')){$('ytfab').classList.remove('hidden')}
+$('ytfab').onclick=()=>{$('ytp').style.display='block'};
+$('ytclose').onclick=()=>{$('ytp').style.display='none'};
+$('ytset').onclick=()=>{A.yt($('ytin').value);$('ytp').style.display='none'};
+$('ytmute').onclick=()=>A.ytMute();
+$('ytoff').onclick=()=>{A.ytOff();$('ytp').style.display='none'};
 $('showJoinBtn').onclick=()=>$('joinBox').classList.toggle('hidden');
 $('joinBtn').onclick=()=>goRoom();
 $('rulesBtn').onclick=()=>showRules();
-Object.assign(window,{A,makeRoom,goRoom,showRules,closeRules,rgo,rvoz,sortRack,addTo,bajar,descartar});
+Object.assign(window,{A,makeRoom,goRoom,showRules,closeRules,rgo,rvoz,sortRack,addTo,bajar,descartar,cortar});
+// ---- canal de YouTube en la TV ----
+let lastYT=null;
+function ytSync(y){const k=y?JSON.stringify(y):'';if(k===lastYT)return;lastYT=k;const b=$('ytbox');
+ if(!y){b.style.display='none';b.innerHTML='';return}
+ const q='autoplay=1&mute='+(y.mute!==false?1:0)+'&playsinline=1&rel=0&controls=0&modestbranding=1';
+ const src=y.t==='c'?'https://www.youtube.com/embed/live_stream?channel='+y.id+'&'+q:'https://www.youtube.com/embed/'+y.id+'?'+q;
+ b.innerHTML='<iframe src="'+src+'" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>';b.style.display='block'}
 // ---- ajuste automático a la pantalla (TV) ----
 function fit(){const w=$('tvwrap');if(!w)return;let sc=1;
  for(let i=0;i<20;i++){w.style.width=(innerWidth/sc)+'px';w.style.transform=sc<1?'scale('+sc+')':'none';

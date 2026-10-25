@@ -425,6 +425,17 @@ function rpage(){const p=RP[rp];
  $('rules').innerHTML=`<div style="max-width:1000px;margin:0 auto;text-align:center"><small>Página ${rp+1} de ${RP.length}</small><h1 style="margin:6px">${p.t}</h1><p style="font-size:26px;line-height:1.4">${p.x}</p><div class="tv">${p.g.map(g=>`<div class="exg">${g[0].map(i=>T(i)).join('')}<div>${g[1]}</div></div>`).join('')}</div><div class="row" style="justify-content:center;margin-top:22px"><button class="s" onclick="rgo(-1)" ${rp?'':'disabled'}>◀ Anterior</button><button class="s" onclick="rvoz()">${rv?'🔊 Voz':'🔇 Voz'}</button><button id="rnext" onclick="rgo(1)">${rp<RP.length-1?'Siguiente ▶':'Listo ✔'}</button><button class="s" onclick="closeRules()">✖ Cerrar</button></div></div>`;
  playRule(rp+1,p.x);$('rnext').focus()}
 document.addEventListener('keydown',e=>{if($('rules').style.display!=='block')return;if(e.key==='ArrowRight')rgo(1);if(e.key==='ArrowLeft')rgo(-1);if(e.key==='Escape')closeRules()});
+// ---- sonidos (se generan, no hay archivos) ----
+let AC=null,PV=null,SFX=localStorage.sfx!=='0';
+function sfxBtn(){const b=$('sfxfab');if(b)b.textContent=SFX?'🔈':'🔇'}
+function toggleSfx(){SFX=!SFX;localStorage.sfx=SFX?'1':'0';sfxBtn()}
+function audio(){try{if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume()}catch(e){}}
+function osc(t,f,f2,d,v,type){if(!AC||!SFX)return;const o=AC.createOscillator(),g=AC.createGain(),T0=AC.currentTime+t;
+ o.type=type;o.frequency.setValueAtTime(f,T0);o.frequency.exponentialRampToValueAtTime(f2,T0+d*.8);
+ g.gain.setValueAtTime(v,T0);g.gain.exponentialRampToValueAtTime(.001,T0+d);o.connect(g);g.connect(AC.destination);o.start(T0);o.stop(T0+d+.02)}
+const sndDrop=()=>osc(0,260,110,.1,.3,'triangle');
+const sndMeld=()=>{osc(0,360,320,.1,.25,'triangle');osc(.14,660,660,.22,.14,'sine')};
+document.addEventListener('click',audio);document.addEventListener('keydown',audio);
 $('hostBtn').onclick=()=>{audio();makeRoom()};
 if(new URLSearchParams(location.search).get('r')){$('ytfab').classList.remove('hidden');$('sfxfab').classList.remove('hidden');sfxBtn()}
 $('sfxfab').onclick=()=>toggleSfx();
@@ -461,17 +472,6 @@ function fit(){const w=$('tvwrap');if(!w)return;let sc=1;
  for(let i=0;i<20;i++){w.style.width=(innerWidth/sc)+'px';w.style.transform=sc<1?'scale('+sc+')':'none';
   if((w.offsetHeight*sc<=innerHeight-4&&w.scrollWidth<=w.clientWidth+1)||sc<=.3)break;sc=Math.round((sc-.05)*100)/100}}
 addEventListener('resize',()=>{if(!new URLSearchParams(location.search).get('r'))fit()});
-// ---- sonidos (se generan, no hay archivos) ----
-let AC=null,PV=null,SFX=localStorage.sfx!=='0';
-function sfxBtn(){const b=$('sfxfab');if(b)b.textContent=SFX?'🔈':'🔇'}
-function toggleSfx(){SFX=!SFX;localStorage.sfx=SFX?'1':'0';sfxBtn()}
-function audio(){try{if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume()}catch(e){}}
-function osc(t,f,f2,d,v,type){if(!AC||!SFX)return;const o=AC.createOscillator(),g=AC.createGain(),T0=AC.currentTime+t;
- o.type=type;o.frequency.setValueAtTime(f,T0);o.frequency.exponentialRampToValueAtTime(f2,T0+d*.8);
- g.gain.setValueAtTime(v,T0);g.gain.exponentialRampToValueAtTime(.001,T0+d);o.connect(g);g.connect(AC.destination);o.start(T0);o.stop(T0+d+.02)}
-const sndDrop=()=>osc(0,260,110,.1,.3,'triangle');
-const sndMeld=()=>{osc(0,360,320,.1,.25,'triangle');osc(.14,660,660,.22,.14,'sine')};
-document.addEventListener('click',audio);document.addEventListener('keydown',audio);
 // ---- arranque ----
 signInAnonymously(auth).then(async u=>{
  me=u.user.uid;const r=new URLSearchParams(location.search).get('r');

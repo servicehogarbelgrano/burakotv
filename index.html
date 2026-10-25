@@ -3,18 +3,15 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Burako TV</title>
 <style>
-/* 1. OPTIMIZACIÓN UI/UX PARA SMART TV Y ESTÉTICA MODERNA */
+/* OPTIMIZACIÓN UI/UX PARA SMART TV Y ESTÉTICA MODERNA */
 *{box-sizing:border-box}
 body{
   margin:0;font-family:system-ui,-apple-system,sans-serif;
-  /* Gradiente moderno en lugar de color plano */
   background:radial-gradient(circle at center, #0e784c 0%, #053b24 100%);
   color:#fff;min-height:100vh;
-  /* Prevenir scroll no deseado en TV */
   overflow-x:hidden;
 }
 
-/* Efectos visuales de FOCO para Control Remoto (D-Pad) */
 button, input, .t, .meld {
   transition: all 0.2s ease;
 }
@@ -33,7 +30,6 @@ button.s{background:#e0e0e0}button:disabled{opacity:.4;transform:none;box-shadow
 .tv .t{width:52px;height:72px;font-size:32px;border-radius:10px}
 .sm .t{width:28px;height:38px;font-size:16px;margin:1px}
 
-/* Tarjetas modernas con Glassmorphism suave */
 .card{background:rgba(0,0,0,0.45);border-radius:16px;padding:14px;margin:10px 0;box-shadow:0 8px 24px rgba(0,0,0,0.2);backdrop-filter:blur(5px);border:1px solid rgba(255,255,255,0.1)}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .msg{background:linear-gradient(135deg, #ffd54f, #f9a825);color:#111;border-radius:10px;padding:10px 14px;font-weight:800;margin:8px 0;font-size:1.1rem;box-shadow:0 4px 10px rgba(0,0,0,0.3)}
@@ -54,7 +50,6 @@ input{font:inherit;padding:14px;border-radius:10px;border:2px solid transparent;
 #rules{display:none;position:fixed;inset:0;background:rgba(5,59,36,0.95);z-index:100;overflow:auto;padding:30px;backdrop-filter:blur(8px)}
 .exg{display:inline-block;text-align:center;margin:10px;padding:14px;background:rgba(0,0,0,0.5);border-radius:16px;font-size:20px;border:1px solid rgba(255,255,255,0.1)}
 
-/* Pantalla de Inicio (Start Menu) Rediseñada */
 #home{background:linear-gradient(135deg, #10151d 0%, #1a2533 100%);color:#f4f7fb}
 .center{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.screen{min-height:100vh;padding:20px}
 .panel2{background:rgba(27,36,48,0.8);border:1px solid rgba(60,76,96,0.5);border-radius:24px;padding:30px;box-shadow:0 20px 50px rgba(0,0,0,0.5);backdrop-filter:blur(10px)}.stack{display:flex;flex-direction:column;gap:16px}
@@ -74,17 +69,14 @@ input{font:inherit;padding:14px;border-radius:10px;border:2px solid transparent;
 #tvwrap{transform-origin:0 0}.pz{height:320px!important}
 .brow{display:flex;gap:10px;flex-wrap:nowrap}.brow button{flex:1;min-width:0;padding:14px 4px;font-size:14px;white-space:nowrap}
 
-/* Estilos para reproductores de YouTube y Spotify - Ligeramente más grandes para TV */
 #ytbox, #spobox {position:fixed;bottom:12px;width:300px;height:169px;z-index:40;border-radius:14px;overflow:hidden;border:3px solid rgba(255,255,255,0.4);display:none;background:#000;box-shadow:0 10px 30px rgba(0,0,0,0.6)}
 #ytbox {right:12px}
 #spobox {left:12px}
 #ytbox iframe, #spobox iframe {width:100%;height:100%;border:0}
 
-/* Botón flotante para menú multimedia */
 #ytfab{position:fixed;right:15px;bottom:15px;z-index:30;width:56px;height:56px;border-radius:50%;padding:0;font-size:26px;box-shadow:0 6px 15px rgba(0,0,0,0.4)}
 #ytp{display:none;position:fixed;left:0;right:0;top:0;bottom:0;background:rgba(5,59,36,0.95);z-index:80;overflow:auto;padding:30px;backdrop-filter:blur(8px)}
 
-/* Nuevo Botón MUTE GENERAL TV */
 #muteGameBtn {
     position: fixed;
     top: 15px;
@@ -97,7 +89,7 @@ input{font:inherit;padding:14px;border-radius:10px;border:2px solid transparent;
     padding: 10px 16px;
     font-size: 1.1rem;
     backdrop-filter: blur(4px);
-    display: none; /* Se muestra solo en la vista de TV por JS */
+    display: none;
 }
 #muteGameBtn.muted-state {
     background: rgba(198, 40, 40, 0.8);
@@ -105,7 +97,6 @@ input{font:inherit;padding:14px;border-radius:10px;border:2px solid transparent;
 }
 </style></head><body>
 
-<!-- Botón general de muteo de efectos (Solución a cortes de video) -->
 <button id="muteGameBtn" onclick="toggleGameMute()" tabindex="1">🔊 Sonido Fichas: ON</button>
 
 <div id="errbar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:999;background:#c62828;padding:16px;font-size:22px;text-align:center"></div>
@@ -115,7 +106,6 @@ input{font:inherit;padding:14px;border-radius:10px;border:2px solid transparent;
   <h2 style="font-size: 2.5rem; margin-bottom: 5px;">Jugá al Burako en la tele</h2>
   <p class="muted" style="margin-bottom: 30px;">La TV muestra la mesa. Cada jugador usa su celular como atril.</p>
   <div class="panel2 stack" style="width:min(600px,100%)">
-    <!-- Tabindex para D-Pad -->
     <button id="hostBtn" tabindex="2">Crear sala en esta pantalla (TV)</button>
     <button id="showJoinBtn" class="blue" tabindex="3">Entrar desde un celular</button>
     <div id="joinBox" class="stack hidden">
@@ -127,7 +117,6 @@ input{font:inherit;padding:14px;border-radius:10px;border:2px solid transparent;
 </section>
 
 <div id="root"></div><div id="rules"></div>
-<!-- Reproductores añadidos -->
 <div id="ytbox"></div><div id="spobox"></div>
 
 <button id="ytfab" class="s hidden" tabindex="7">📺🎵</button>
@@ -163,6 +152,44 @@ const app=initializeApp(firebaseConfig),db=getFirestore(app),auth=getAuth(app),$
 
 window.onerror=function(m,src,l){var e=$('errbar');e.style.display='block';e.textContent='⚠️ '+m+(l?' (línea '+l+')':'')};
 
+// --- DECLARACIÓN INICIAL DE AUDIO PARA EVITAR ERRORES DE CACHÉ FIREBASE ---
+let gameMuted = false;
+let AC=null,PV=null;
+
+window.toggleGameMute = function() {
+    gameMuted = !gameMuted;
+    const btn = document.getElementById('muteGameBtn');
+    if(gameMuted) {
+        btn.innerText = '🔇 Sonido Fichas: OFF';
+        btn.classList.add('muted-state');
+    } else {
+        btn.innerText = '🔊 Sonido Fichas: ON';
+        btn.classList.remove('muted-state');
+        audio();
+    }
+};
+
+function audio(){
+  if(gameMuted) return;
+  try{
+    if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();
+    if(AC.state==='suspended')AC.resume();
+  }catch(e){}
+}
+
+function osc(t,f,f2,d,v,type){
+  if(!AC || gameMuted) return;
+  const o=AC.createOscillator(),g=AC.createGain(),T0=AC.currentTime+t;
+  o.type=type;o.frequency.setValueAtTime(f,T0);o.frequency.exponentialRampToValueAtTime(f2,T0+d*.8);
+  g.gain.setValueAtTime(v,T0);g.gain.exponentialRampToValueAtTime(.001,T0+d);o.connect(g);g.connect(AC.destination);o.start(T0);o.stop(T0+d+.02)
+}
+
+const sndDrop=()=>{ if(gameMuted) return; osc(0,260,110,.14,.5,'triangle');osc(0,1500,700,.04,.12,'square')};
+const sndMeld=()=>{ if(gameMuted) return; [300,360,430].forEach((f,k)=>{osc(k*.08,f,f*.5,.12,.4,'triangle');osc(k*.08,1500,800,.03,.08,'square')});osc(.26,660,660,.35,.18,'sine');osc(.36,880,880,.45,.18,'sine')};
+
+document.addEventListener('click',audio);
+
+// --- VARIABLES GLOBALES RESTANTES ---
 const COL=['#d32f2f','#f9a825','#1976d2','#222'];
 const N=i=>i>=104?0:(i%52)%13+1, C=i=>i>=104?4:Math.floor((i%52)/13);
 const V=i=>{const n=N(i);return n===0?50:n===1?15:n===2?20:n<=7?5:10};
@@ -171,10 +198,9 @@ const sortR=a=>[...a].sort((x,y)=>(C(x)-C(y))||(N(x)-N(y)));
 let me,ref,S=null,sel=new Set();
 const toast=m=>{const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',3000)};
 
-// --- SISTEMA DE NAVEGACIÓN D-PAD (CONTROL REMOTO SMART TV) ---
+// --- SISTEMA DE NAVEGACIÓN D-PAD ---
 let currentFocusIndex = -1;
 function handleDPadNavigation(e) {
-  // Filtramos elementos interactivos visibles
   const focusables = Array.from(document.querySelectorAll('button:not([disabled]):not(.hidden), input:not(.hidden)'))
                           .filter(el => el.offsetWidth > 0 || el.offsetHeight > 0);
   if(focusables.length === 0) return;
@@ -341,258 +367,4 @@ function botDiscard(s,u){
  const key=new Map(h.map(t=>[t,(helps(t)?100000:0)+keepScore(t,h)]));
  const order=[...h].sort((a,b)=>key.get(a)-key.get(b));
  for(const t of order){
-  try{const c=JSON.parse(JSON.stringify(s));M.disc(c,u,t);Object.keys(s).forEach(k=>delete s[k]);Object.assign(s,c);return}catch(e){}
- }
- throw Error('La máquina no pudo descartar');
-}
-function botStep(s,u){
- const i=s.players.findIndex(p=>p.uid===u),tm=i%2,h=s.hands[u];
- if(!s.drawn){
-  const top=s.pozo[s.pozo.length-1];
-  if(top!==undefined&&s.pozo.length<=6){const b=bestMeld([...h,top],s.melds.some(m=>m.team===tm&&m.t==='p'));if(b&&b.includes(top))return M.pozo(s,u)}
-  return M.draw(s,u);
- }
- const mk=s.mtn[tm]===s.mtT,can=hasCan(s,tm);
- const ok=(rem,mkCan)=>rem>=2||!mk||can||mkCan;
- for(const t of h){if(N(t)===0)continue;
-  for(const m of s.melds.filter(m=>m.team===tm)){
-   const inf=meldInfo([...m.ids,t]);
-   if(inf&&inf.w<=m.w&&ok(h.length-1,inf.ids.length>=7))return M.add(s,u,m.id,[t]);
-  }}
- const b=bestMeld(h,s.melds.some(m=>m.team===tm&&m.t==='p'));
- if(b&&ok(h.length-b.length,b.length>=7))return M.meld(s,u,b);
- if(h.length===2&&mk&&can){for(const t of h){const o=h.find(x=>x!==t);if(N(o)>=1&&N(o)<5)return M.cut(s,u,t)}}
- return botDiscard(s,u);
-}
-let botBusy=false,botErr=0;
-const isBot=s=>s&&s.phase==='play'&&s.players[s.turn]&&s.players[s.turn].bot;
-function botSchedule(s){if(botBusy||botErr>=3||!isBot(s))return;botBusy=true;setTimeout(botTick,s.drawn?1100:1600)}
-async function botTick(){
- try{await runTransaction(db,async t=>{const s=(await t.get(ref)).data();if(!isBot(s))return;botStep(s,s.players[s.turn].uid);t.set(ref,s)});botErr=0}
- catch(e){botErr++;toast('Máquina: '+(e.message||e))}
- botBusy=false;if(botErr<3)botSchedule(S);
-}
-
-// ---- vistas ----
-const teamName=(s,t)=>s.players.filter((_,k)=>k%2===t).map(p=>p.name).join(' y ')||'—';
-const meldTiles=m=>m.ids.map((x,k)=>T(x,m.ids.length>=7&&k===m.ids.length-1?'cx'+(m.w?'':' pure'):'')).join('');
-const meldHtml=(m,cls='')=>`<div class="card ${cls}" style="margin:6px 0">${meldTiles(m)}</div>`;
-const rnd=(id,k)=>{const x=Math.sin(id*12.9898+k*78.233)*43758.5453;return x-Math.floor(x)};
-const endHead=s=>(s.closer!==null&&s.closer!==undefined?'¡SE CORTÓ!':'Se terminó el mazo')+' · '+(s.winner>=0?'Ganó la mano: '+teamName(s,s.winner):'Empate');
-const pozoTV=(a,cut)=>`<div class="pz">${a.map((id,k)=>(st=>id===cut?`<div class="t back" style="color:#fff;${st}">CORTE</div>`:T(id,'',st))(`left:${(rnd(id,1)*78+2).toFixed(1)}%;top:${(rnd(id,2)*72+2).toFixed(1)}%;transform:rotate(${(rnd(id,3)*80-40).toFixed(0)}deg);z-index:${k}`)).join('')}</div>`;
-const muertosTV=(s,t)=>'<span style="display:inline-flex;gap:6px">'+Array.from({length:s.mtT},(_,k)=>`<span class="mu ${k<s.mtn[t]?'tk':''}">MUERTO</span>`).join('')+'</span>';
-const pilesTV=n=>{const p=Math.ceil(n/10);if(!p)return '<div class="msg">¡Mazo vacío! Hay que cortar</div>';let h='';
- for(let k=0;k<p;k++){const c=k===p-1?n-10*k:10;h+=`<div class="pile"><i style="top:10px;left:0"></i><i style="top:5px;left:4px"></i><i style="top:0;left:8px"></i><b>${c}</b></div>`}
- return `<div class="row" style="justify-content:center;margin-top:10px">${h}</div><small style="font-size:16px">Montones de 10 fichas</small>${p===1?`<div class="msg">Último montón: quedan ${n} fichas · ¡a cortar!</div>`:''}`};
-function tv(s){
- // Mostrar el botón de mute al estar en modo TV
- $('muteGameBtn').style.display = 'block';
-
- if(s.phase==='lobby'){
-  document.body.style.overflow='hidden';root.innerHTML=`<div id="tvwrap" class="tv" style="text-align:center;padding:40px"><h1 style="font-size:4rem;margin:10px;color:#ffd166;text-shadow:0 5px 15px rgba(0,0,0,0.5)">BURAKO TV</h1><p style="font-size:1.8rem">Escaneá el QR con el celular (2 o 4 jugadores)</p><div id="qr" style="display:inline-block;background:#fff;padding:16px;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,0.5);margin:20px 0"></div><p class="big" style="font-size:3rem;margin:10px">${ref.id}</p><h2 style="font-size:2.2rem;color:#4caf50">${s.players.map(p=>p.name).join(' · ')||'Esperando jugadores…'}</h2></div>`;
-  new QRCode($('qr'),{text:location.origin+location.pathname+'?r='+ref.id,width:280,height:280});fit();return;
- }
- const cur=s.players[s.turn];
- const col=t=>`<div><h2 style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:2rem;background:rgba(0,0,0,0.5);padding:10px;border-radius:10px">${teamName(s,t)} — <span style="color:#ffd54f">${s.scores[t]} pts</span> ${muertosTV(s,t)}</h2>${s.melds.filter(m=>m.team===t).map(m=>meldHtml(m,'mt')).join('')}</div>`;
- let end='';
- if(s.phase!=='play')end=`<div class="card" style="border:2px solid #ffd54f;background:rgba(0,0,0,0.85);box-shadow:0 0 40px rgba(255,213,79,0.3)"><h2 style="font-size:2.5rem">${s.phase==='over'?'¡Fin del juego!':'Fin de la mano'}</h2><div class="msg" style="font-size:1.8rem">${endHead(s)}</div>${s.result.map(r=>`<p style="font-size:1.6rem">${teamName(s,r.team)}: ${r.pts>=0?'+':''}${r.pts} → <b style="color:#ffd54f;font-size:2rem">${r.total}</b>${r.noCan?' <small style="color:#ff5252">(sin canasta resta)</small>':''}</p>`).join('')}</div>`;
- document.body.style.overflow='hidden';root.innerHTML=`<div id="tvwrap" class="tv"><div class="tvg">${col(0)}<div style="text-align:center"><div class="msg" style="font-size:1.8rem;box-shadow:0 0 15px rgba(255,213,79,0.5)">${s.phase==='play'?'Juega: '+cur.name:''}</div><h3 style="font-size:1.6rem">Pozo (${s.pozo.length})</h3>${pozoTV(s.pozo,s.cutId)}<h3 style="font-size:1.6rem">Mazo (${s.deck.length})</h3>${pilesTV(s.deck.length)}<p style="font-size:1.4rem;font-weight:bold;color:#4caf50">${s.msg||''}</p>${end}</div>${col(1)}</div></div>`;fit();
-}
-let RK={a:[],b:[]},drag=null;
-try{RK=JSON.parse(localStorage.rk)||RK}catch(e){}
-function syncRack(h){RK.a=RK.a.filter(x=>h.includes(x));RK.b=RK.b.filter(x=>h.includes(x));
- h.forEach(x=>{if(!RK.a.includes(x)&&!RK.b.includes(x))RK.a.push(x)});localStorage.rk=JSON.stringify(RK)}
-function sortRack(){RK.a=sortR(RK.a);RK.b=sortR(RK.b);localStorage.rk=JSON.stringify(RK);phone(S)}
-function addTo(id){const i=idx(S);if(S.turn!==i||!S.drawn||!sel.size)return toast('Elegí fichas del atril y después tocá el juego');A.add(id,[...sel])}
-function clearHi(){document.querySelectorAll('.over').forEach(x=>x.classList.remove('over'));document.querySelectorAll('.t').forEach(t=>t.style.removeProperty('--gx'))}
-function bindRack(){
- const r=$('rack');
- const pg=rc=>({left:rc.left+scrollX,right:rc.right+scrollX,top:rc.top+scrollY,bottom:rc.bottom+scrollY,width:rc.width});
- const upd=()=>{if(!drag||!drag.moved)return;
-  const X=drag.cx+scrollX,Y=drag.cy+scrollY;
-  drag.el.style.transform=`translate(${X-drag.sx}px,${Y-drag.sy}px) scale(1.15)`;drag.el.style.zIndex=9;drag.el.style.transition='none';
-  const P=8;
-  const cell=drag.cells.find(o=>X>=o.r.left-P&&X<=o.r.right+P&&Y>=o.r.top-P&&Y<=o.r.bottom+P);
-  const tg=cell?{cell,k:(i=>i<0?cell.tl.length:i)(cell.tl.findIndex(o=>Y<o.r.bottom&&(Y<o.r.top||X<o.r.left+o.r.width/2)))}:null;
-  const same=tg&&drag.tg&&tg.cell===drag.tg.cell&&tg.k===drag.tg.k;
-  if(same||(!tg&&!drag.tg))return;
-  clearHi();drag.tg=tg;if(!tg)return;
-  tg.cell.c.classList.add('over');
-  tg.cell.tl.forEach((o,i)=>{if(i>=tg.k)o.t.style.setProperty('--gx','34px')})};
- const loop=()=>{if(!drag||!drag.moved)return;
-  const E=90;let dy=0;
-  if(drag.cy<E)dy=-Math.ceil((E-drag.cy)/5);else if(drag.cy>innerHeight-E)dy=Math.ceil((drag.cy-(innerHeight-E))/5);
-  if(dy)window.scrollBy(0,dy);
-  upd();drag.raf=requestAnimationFrame(loop)};
- r.onpointerdown=e=>{const el=e.target.closest('.t');if(!el)return;
-  const cells=[...document.querySelectorAll('.rk,.meld')].map(c=>({c,r:pg(c.getBoundingClientRect()),tl:[...c.querySelectorAll('.t')].filter(t=>t!==el).map(t=>({t,r:pg(t.getBoundingClientRect())}))}));
-  drag={el,id:+el.dataset.i,x:e.clientX,y:e.clientY,cx:e.clientX,cy:e.clientY,sx:e.clientX+scrollX,sy:e.clientY+scrollY,moved:false,cells,tg:null,raf:0};el.setPointerCapture(e.pointerId)};
- r.onpointermove=e=>{if(!drag)return;drag.cx=e.clientX;drag.cy=e.clientY;
-  if(!drag.moved&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>8){drag.moved=true;drag.raf=requestAnimationFrame(loop)}
-  upd()};
- r.onpointerup=e=>{if(!drag)return;const d=drag;drag=null;cancelAnimationFrame(d.raf);clearHi();
-  if(!d.moved){sel.has(d.id)?sel.delete(d.id):sel.add(d.id);return phone(S)}
-  const tg=d.tg;
-  if(tg&&tg.cell.c.classList.contains('meld')){A.add(+tg.cell.c.dataset.m,sel.has(d.id)?[...sel]:[d.id]);return phone(S)}
-  if(tg){RK.a=RK.a.filter(x=>x!==d.id);RK.b=RK.b.filter(x=>x!==d.id);
-   const L=RK[tg.cell.c.dataset.r],o=tg.cell.tl[tg.k];const k=o?L.indexOf(+o.t.dataset.i):-1;k>=0?L.splice(k,0,d.id):L.push(d.id);
-   localStorage.rk=JSON.stringify(RK)}
-  phone(S)};
- r.onpointercancel=()=>{if(drag)cancelAnimationFrame(drag.raf);drag=null;clearHi();phone(S)};
-}
-function phone(s){
- const i=idx(s);
- if(s.phase==='lobby'){
-  if(i<0){root.innerHTML=`<div style="padding:20px"><h2 style="font-size:1.8rem">Burako — sala ${ref.id}</h2><input id="nm" placeholder="Tu nombre" value="${localStorage.nm||''}"><button style="width:100%;margin-top:10px;font-size:1.4rem" onclick="localStorage.nm=nm.value;A.join(nm.value||'Jugador')">Entrar</button></div>`;return}
-  const n=s.players.length;root.innerHTML=`<div style="padding:20px"><h2 style="font-size:1.8rem">Sala ${ref.id}</h2><p style="font-size:1.3rem;background:rgba(0,0,0,0.3);padding:10px;border-radius:10px">${s.players.map(p=>(p.bot?'🤖 ':'')+p.name).join(', ')}</p>${i===0?`<div style="display:flex;flex-direction:column;gap:16px;max-width:400px">${n===1?'<button onclick="A.solo(1)">🤖 Jugar solo contra la máquina</button><button onclick="A.solo(3)">🤖 Yo y una máquina contra 2 máquinas</button><small style="text-align:center">O esperá a que entren más jugadores</small>':''}${n<4?'<button class="s" onclick="A.addBot()">+ Agregar una máquina</button>':''}${n===2||n===4?`<button class="good" style="font-size:1.4rem;padding:16px" onclick="A.start()">Comenzar (${n} jugadores)</button>`:''}</div>`:'<p style="font-size:1.2rem;text-align:center;margin-top:20px">Esperá que empiece el primero…</p>'}</div>`;return;
- }
- if(i<0){root.innerHTML='<p style="padding:20px;font-size:1.5rem">Partida en curso.</p>';return}
- const h=s.hands[me]||[],mine=s.turn===i,tm=i%2;syncRack(h);sel=new Set([...sel].filter(x=>h.includes(x)));
- let end='';
- if(s.phase!=='play')end=`<div class="card" style="border:2px solid #ffd54f"><h3>${s.phase==='over'?'¡Fin del juego!':'Fin de la mano'}</h3><div class="msg">${endHead(s)}</div>${s.result.map(r=>`<p style="font-size:1.1rem">${teamName(s,r.team)}: ${r.pts>=0?'+':''}${r.pts} → <b style="color:#ffd54f">${r.total}</b>${r.noCan?' <small>(sin canasta resta)</small>':''}</p>`).join('')}<button style="width:100%;margin-top:10px" onclick="A.again()">${s.phase==='over'?'Nueva partida':'Siguiente mano'}</button></div>`;
- const can=mine&&s.drawn&&sel.size>0;
- const canCut=mine&&s.drawn&&s.phase==='play'&&sel.size===1&&h.length===2&&s.mtn[tm]===s.mtT&&hasCan(s,tm)&&(o=>o!==undefined&&N(o)>=1&&N(o)<5)(h.find(x=>!sel.has(x)));
- const my=s.melds.filter(m=>m.team===tm).map(m=>`<div class="card sm meld ${can?'tap':''}" data-m="${m.id}" style="margin:6px 0" onclick="addTo(${m.id})">${meldTiles(m)}</div>`).join('');
- root.innerHTML=`<div style="padding:16px;padding-bottom:100px">
- <div class="msg" style="text-align:center;font-size:1.2rem">${s.phase==='play'?(mine?(s.drawn?'Tu turno: bajá o descartá':'Tu turno: robá'):'Juega '+s.players[s.turn].name):'—'}</div>
- ${end}
- ${s.pozo.length?`<div class="card sm pzp">${s.pozo.map(x=>x===s.cutId?'<div class="t back">CORTE</div>':T(x)).join('')}</div>`:''}
- <h3>Juegos de mi equipo</h3>${my||'<small>Todavía no bajaron nada</small>'}${can&&my?'<div style="background:rgba(255,213,79,0.2);padding:6px;border-radius:6px;margin:4px 0"><small>Tocá un juego para sumar las fichas elegidas</small></div>':''}
- ${s.phase==='play'&&mine?`<div class="brow" style="margin-top:12px"><button ${s.drawn?'disabled':''} onclick="A.draw()">Robar</button><button ${s.drawn?'disabled':''} onclick="A.pozo()" style="background:#4caf50;color:white">Pozo</button></div><div class="brow" style="margin-top:8px"><button ${!s.drawn||!sel.size?'disabled':''} onclick="bajar()">Bajar (${sel.size})</button><button class="s" ${!s.drawn||sel.size!==1?'disabled':''} onclick="descartar()">Descartar</button>${canCut?'<button style="background:#c62828;color:white" onclick="cortar()">✂ Cortar</button>':''}</div>`:''}
- <div class="row" style="margin-top:16px;justify-content:space-between;align-items:flex-end"><h3>Mi atril</h3><button class="s" style="padding:8px 12px;font-size:12px" onclick="sortRack()">Ordenar ⇅</button></div>
- <small>Tocá para elegir · arrastrá para mover (hay 2 filas)</small>
- <div id="rack"><div class="rk" data-r="a">${RK.a.map(x=>T(x,sel.has(x)?'sel':'')).join('')}</div><div class="rk" data-r="b">${RK.b.map(x=>T(x,sel.has(x)?'sel':'')).join('')}</div></div></div>`;
- bindRack();
-}
-function render(s){S=s;$('home').classList.add('hidden');if(drag&&drag.moved)return;
- if(!new URLSearchParams(location.search).get('r')){
-  if(PV&&PV.phase==='play'&&s.phase==='play'){const n=x=>(x.melds||[]).reduce((a,m)=>a+m.ids.length,0);
-   const ml=n(s)>n(PV),dr=(s.pozo||[]).length>(PV.pozo||[]).length;
-   if(ml)sndMeld();if(dr)setTimeout(sndDrop,ml?500:0)}
-  PV=s}
-new URLSearchParams(location.search).get('r')?phone(s):(tv(s),botSchedule(s),ytSync(s.yt!==undefined?s.yt:(parseYT(YT0)?{...parseYT(YT0),mute:true}:null)),spoSync(s.spo||null))}
-
-function home(){$('home').classList.remove('hidden')}
-function bajar(){A.meld([...sel])}
-function descartar(){A.disc([...sel][0])}
-function cortar(){A.cut([...sel][0])}
-async function makeRoom(){
- $('home').classList.add('hidden');
- const AL='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',rb=crypto.getRandomValues(new Uint8Array(6)),code=[...rb].map(x=>AL[x%AL.length]).join('');ref=doc(db,'burako',code);
- try{await setDoc(ref,{hostId:me,phase:'lobby',players:[],scores:[0,0],melds:[],msg:''})}
- catch(e){root.innerHTML='<p style="padding:20px;font-size:20px">⚠️ No se pudo crear la sala: '+e.message+'<br><small>Revisá las reglas de Firestore (tienen que permitir la colección "burako").</small></p>';return}
- onSnapshot(ref,sn=>sn.exists()&&render(sn.data()),e=>toast(e.message))}
-function goRoom(){const c=($('cd').value||'').trim().toUpperCase();if(c.length<6)return toast('Poné el código de 6 letras o números');location.href=location.pathname+'?r='+c}
-// ---- reglas con imágenes y voz ----
-const tid=(n,c)=>c*13+n-1,J=104;
-const run=(a,b,c)=>Array.from({length:b-a+1},(_,k)=>tid(a+k,c));
-const RP=[
-{t:'Objetivo',x:'Burako se juega de a 2 o de a 4 jugadores. Con 4 se juega en parejas, y cada uno se sienta enfrente de su compañero. Gana el primer equipo que llega a 3000 puntos.',g:[]},
-{t:'Las fichas y sus puntos',x:'Hay 104 fichas numeradas del 1 al 13 en cuatro colores, más 2 comodines. El 1 vale 15 puntos, el 2 vale 20, del 3 al 7 valen 5, y del 8 al 13 valen 10. El comodín vale 50.',g:[[[tid(1,0)],'15'],[[tid(2,1)],'20 (comodín)'],[[tid(5,2)],'5'],[[tid(11,3)],'10'],[[J],'50 (comodín)']]},
-{t:'Reparto',x:'Cada jugador recibe 11 fichas. Se arman pilas de 11 fichas llamadas muertos. Una ficha se pone en el pozo y el resto queda en el mazo.',g:[]},
-{t:'Tu turno',x:'En tu turno primero tenés que robar: o una ficha del mazo, o todo el pozo. Después podés bajar juegos o agregar fichas a los juegos de tu equipo. Para terminar, descartás una ficha al pozo.',g:[]}];
-let rp=0,rv=true,RA=null;
-function stopAudio(){if(RA){RA.onerror=null;try{RA.pause()}catch(e){}RA=null}if(window.speechSynthesis)speechSynthesis.cancel()}
-function playRule(n,text){stopAudio();if(!rv)return;const ex=['mp3','m4a'];let k=0;
- const next=()=>{if(k>=ex.length){speak(text);return}
-  const a=new Audio('audio/regla-'+n+'.'+ex[k++]);RA=a;
-  a.onerror=()=>{if(RA===a)next()};
-  const p=a.play();if(p&&p.catch)p.catch(()=>{if(RA===a)next()})};
- next()}
-function speak(t){if(!window.speechSynthesis)return;speechSynthesis.cancel();if(!rv)return;const u=new SpeechSynthesisUtterance(t);u.lang='es-AR';u.rate=.95;speechSynthesis.speak(u)}
-function showRules(){rp=0;$('rules').style.display='block';rpage()}
-function closeRules(){stopAudio();$('rules').style.display='none'}
-function rgo(d){if(rp+d>=RP.length)return closeRules();rp=Math.max(0,rp+d);rpage()}
-function rvoz(){rv=!rv;rpage()}
-function rpage(){const p=RP[rp];
- $('rules').innerHTML=`<div style="max-width:1000px;margin:0 auto;text-align:center"><small>Página ${rp+1} de ${RP.length}</small><h1 style="margin:6px;font-size:3rem;color:#ffd54f">${p.t}</h1><p style="font-size:26px;line-height:1.4">${p.x}</p><div class="tv">${p.g.map(g=>`<div class="exg">${g[0].map(i=>T(i)).join('')}<div>${g[1]}</div></div>`).join('')}</div><div class="row" style="justify-content:center;margin-top:40px"><button class="s" onclick="rgo(-1)" ${rp?'':'disabled'}>◀ Anterior</button><button class="s" onclick="rvoz()">${rv?'🔊 Voz':'🔇 Voz'}</button><button id="rnext" onclick="rgo(1)" tabindex="100">${rp<RP.length-1?'Siguiente ▶':'Listo ✔'}</button><button class="s" onclick="closeRules()">✖ Cerrar</button></div></div>`;
- playRule(rp+1,p.x);$('rnext').focus()}
-document.addEventListener('keydown',e=>{if($('rules').style.display!=='block')return;if(e.key==='ArrowRight')rgo(1);if(e.key==='ArrowLeft')rgo(-1);if(e.key==='Escape')closeRules()});
-
-$('hostBtn').onclick=()=>{audio();makeRoom()};
-if(new URLSearchParams(location.search).get('r')){$('ytfab').classList.remove('hidden')}
-$('ytfab').onclick=()=>{$('ytp').style.display='block'};
-$('ytclose').onclick=()=>{$('ytp').style.display='none'};
-
-// Configuración de botones YouTube y Spotify
-$('ytset').onclick=()=>{A.yt($('ytin').value);$('ytp').style.display='none'};
-$('ytoff').onclick=()=>{A.ytOff();$('ytp').style.display='none'};
-$('sposet').onclick=()=>{A.spo($('spoin').value);$('ytp').style.display='none'};
-$('spooff').onclick=()=>{A.spoOff();$('ytp').style.display='none'};
-$('ytmute').onclick=()=>A.ytMute();
-
-$('showJoinBtn').onclick=()=>$('joinBox').classList.toggle('hidden');
-$('joinBtn').onclick=()=>goRoom();
-$('rulesBtn').onclick=()=>showRules();
-Object.assign(window,{A,makeRoom,goRoom,showRules,closeRules,rgo,rvoz,sortRack,addTo,bajar,descartar,cortar,toggleGameMute});
-
-// ---- canal de YouTube y Spotify en la TV ----
-let lastYT=null, lastSpo=null;
-function ytSync(y){
- const k=y?JSON.stringify(y):'null';if(k===lastYT)return;lastYT=k;const b=$('ytbox');
- if(!y){b.style.display='none';b.innerHTML='';return}
- const q='autoplay=1&mute='+(y.mute!==false?1:0)+'&playsinline=1&rel=0&controls=0&modestbranding=1';
- const src=y.t==='c'?'https://www.youtube.com/embed/live_stream?channel='+y.id+'&'+q:'https://www.youtube.com/embed/'+y.id+'?'+q;
- b.innerHTML='<iframe src="'+src+'" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>';b.style.display='block';
-}
-
-function spoSync(y){
- const k=y?JSON.stringify(y):'null';if(k===lastSpo)return;lastSpo=k;const b=$('spobox');
- if(!y){b.style.display='none';b.innerHTML='';return}
- b.innerHTML=`<iframe src="https://open.spotify.com/embed/${y.t}/${y.id}?utm_source=generator&theme=0" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>`;
- b.style.display='block';
-}
-
-// ---- ajuste automático a la pantalla (TV) ----
-function fit(){
-  const w=$('tvwrap');if(!w)return;let sc=1;
-  for(let i=0;i<20;i++){
-    w.style.width=(innerWidth/sc)+'px';w.style.transform=sc<1?'scale('+sc+')':'none';
-    if((w.offsetHeight*sc<=innerHeight-4&&w.scrollWidth<=w.clientWidth+1)||sc<=.3)break;
-    sc=Math.round((sc-.05)*100)/100
-  }
-}
-addEventListener('resize',()=>{if(!new URLSearchParams(location.search).get('r'))fit()});
-
-// --- SISTEMA DE AUDIO MANUAL PARA FICHAS (SOLUCIÓN DEFINITIVA TV) ---
-let gameMuted = false;
-window.toggleGameMute = function() {
-    gameMuted = !gameMuted;
-    const btn = document.getElementById('muteGameBtn');
-    if(gameMuted) {
-        btn.innerText = '🔇 Sonido Fichas: OFF';
-        btn.classList.add('muted-state');
-    } else {
-        btn.innerText = '🔊 Sonido Fichas: ON';
-        btn.classList.remove('muted-state');
-        audio(); // Iniciar contexto si se desmutea
-    }
-};
-
-let AC=null,PV=null;
-function audio(){
-  if(gameMuted) return; // Si está muteado, no inicializar el contexto de audio
-  try{
-    if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();
-    if(AC.state==='suspended')AC.resume();
-  }catch(e){}
-}
-function osc(t,f,f2,d,v,type){
-  if(!AC || gameMuted) return; // Abortar si está muteado manualmente
-  const o=AC.createOscillator(),g=AC.createGain(),T0=AC.currentTime+t;
-  o.type=type;o.frequency.setValueAtTime(f,T0);o.frequency.exponentialRampToValueAtTime(f2,T0+d*.8);
-  g.gain.setValueAtTime(v,T0);g.gain.exponentialRampToValueAtTime(.001,T0+d);o.connect(g);g.connect(AC.destination);o.start(T0);o.stop(T0+d+.02)
-}
-
-const sndDrop=()=>{ if(gameMuted) return; osc(0,260,110,.14,.5,'triangle');osc(0,1500,700,.04,.12,'square')};
-const sndMeld=()=>{ if(gameMuted) return; [300,360,430].forEach((f,k)=>{osc(k*.08,f,f*.5,.12,.4,'triangle');osc(k*.08,1500,800,.03,.08,'square')});osc(.26,660,660,.35,.18,'sine');osc(.36,880,880,.45,.18,'sine')};
-
-document.addEventListener('click',audio);
-
-// ---- arranque ----
-signInAnonymously(auth).then(async u=>{
- me=u.user.uid;const r=new URLSearchParams(location.search).get('r');
- if(r){ref=doc(db,'burako',r.toUpperCase());onSnapshot(ref,sn=>sn.exists()?render(sn.data()):root.innerHTML='<p style="padding:20px;font-size:1.5rem">No existe esa sala. <a href="'+location.pathname+'" style="color:#ffd54f">Volver</a></p>',e=>toast(e.message))}
- else home();
-}).catch(e=>{$('home').classList.add('hidden');root.innerHTML='<p style="padding:30px;font-size:24px;text-align:center;background:rgba(198,40,40,0.8);border-radius:15px;margin:20px">⚠️ '+e.message+'<br><small>Tiene que abrirse desde un servidor HTTPS válido (Firebase/GitHub Pages).</small></p>'});
-</script></body></html>
+  try{const c=JSON.parse(JSON.stringify(s));M.disc(c,u,t);Object.keys

@@ -437,14 +437,14 @@ const sndDrop=()=>osc(0,260,110,.1,.3,'triangle');
 const sndMeld=()=>{osc(0,360,320,.1,.25,'triangle');osc(.14,660,660,.22,.14,'sine')};
 document.addEventListener('click',audio);document.addEventListener('keydown',audio);
 $('hostBtn').onclick=()=>{audio();makeRoom()};
-if(new URLSearchParams(location.search).get('r')){$('ytfab').classList.remove('hidden');$('sfxfab').classList.remove('hidden');sfxBtn()}
+if(!new URLSearchParams(location.search).get('r')){$('ytfab').classList.remove('hidden');$('sfxfab').classList.remove('hidden');sfxBtn()}
 $('sfxfab').onclick=()=>toggleSfx();
 $('ytfab').onclick=()=>{$('ytp').style.display='block'};
 $('ytclose').onclick=()=>{$('ytp').style.display='none'};
 $('ytset').onclick=()=>{A.yt($('ytin').value);$('ytp').style.display='none'};
 $('ytmute').onclick=()=>A.ytMute();
 $('ytoff').onclick=()=>{A.ytOff();$('ytp').style.display='none'};
-if(new URLSearchParams(location.search).get('r')){$('mzfab').classList.remove('hidden')}
+if(!new URLSearchParams(location.search).get('r')){$('mzfab').classList.remove('hidden')}
 $('mzfab').onclick=()=>{$('mzp').style.display='block'};
 $('mzclose').onclick=()=>{$('mzp').style.display='none'};
 $('mzset').onclick=()=>{A.music($('mzin').value);$('mzp').style.display='none'};

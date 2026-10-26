@@ -39,7 +39,7 @@ input{font:inherit;padding:12px;border-radius:10px;border:0;width:100%;margin:8p
 .tv .mt .t{width:34px;height:46px;font-size:19px}
 #tvwrap{transform-origin:0 0;contain:layout style}.pz{height:300px!important}
 .brow{display:flex;gap:6px;flex-wrap:nowrap}.brow button{flex:1;min-width:0;padding:12px 2px;font-size:13px;white-space:nowrap}
-#ytbox{position:fixed;right:8px;bottom:8px;width:260px;height:146px;z-index:40;border-radius:10px;overflow:hidden;border:2px solid #ffffff55;display:none;background:#000;will-change:transform;transform:translateZ(0);contain:strict}
+#ytbox{isolation:isolate;position:fixed;right:8px;bottom:8px;width:260px;height:146px;z-index:40;border-radius:10px;overflow:hidden;border:2px solid #ffffff55;display:none;background:#000;will-change:transform;transform:translateZ(0);contain:strict}
 #ytbox iframe{width:100%;height:100%;border:0}
 #ytfab{position:fixed;right:10px;bottom:10px;z-index:30;width:46px;height:46px;border-radius:50%;padding:0;font-size:22px}
 body.ph #ytfab{bottom:auto;top:8px}
@@ -465,11 +465,21 @@ function musicSync(mz){const k=mz?JSON.stringify(mz):'';if(k===lastMZ)return;las
  if(mz.t==='sp')src='https://open.spotify.com/embed/'+mz.kind+'/'+mz.id+'?utm_source=generator&theme=0';
  else src='https://www.youtube.com/embed/'+mz.id+'?autoplay=1&mute='+(mz.mute?1:0)+'&playsinline=1&rel=0&controls=1&modestbranding=1';
  b.innerHTML='<iframe src="'+src+'" allow="autoplay; encrypted-media; clipboard-write" allowfullscreen></iframe>';b.style.display='block'}
-function ytSync(y){const k=y?JSON.stringify(y):'';if(k===lastYT)return;lastYT=k;const b=$('ytbox');
- if(!y){b.style.display='none';b.innerHTML='';return}
- const q='autoplay=1&mute='+(y.mute!==false?1:0)+'&playsinline=1&rel=0&controls=0&modestbranding=1';
- const src=y.t==='c'?'https://www.youtube.com/embed/live_stream?channel='+y.id+'&'+q:'https://www.youtube.com/embed/'+y.id+'?'+q;
- b.innerHTML='<iframe src="'+src+'" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>';b.style.display='block'}
+// Video en capa aparte: vive fuera de la app, se crea una sola vez y el juego nunca lo toca.
+// Solo se recarga si cambia el canal/video; silenciar o no se hace sin recargar.
+let ytKey=null,ytFrame=null,ytMuted=true;
+function ytSync(y){const b=$('ytbox');
+ if(!y){if(ytKey!==null){ytKey=null;ytFrame=null;b.style.display='none';b.innerHTML=''}return}
+ const key=y.t+':'+y.id,m=y.mute!==false;
+ if(key!==ytKey){ytKey=key;ytMuted=m;
+  const q='autoplay=1&mute='+(m?1:0)+'&playsinline=1&rel=0&controls=0&modestbranding=1&enablejsapi=1&origin='+encodeURIComponent(location.origin);
+  const h='https://www.youtube-nocookie.com/embed/';
+  const src=y.t==='c'?h+'live_stream?channel='+y.id+'&'+q:h+y.id+'?'+q;
+  b.innerHTML='<iframe src="'+src+'" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>';
+  ytFrame=b.firstChild;b.style.display='block';return}
+ if(m!==ytMuted){ytMuted=m;try{ytFrame.contentWindow.postMessage(JSON.stringify({event:'command',func:m?'mute':'unMute',args:[]}),'*')}catch(e){}}}
+// el contenedor del video cuelga de <html>, fuera del <body> que redibuja el juego
+document.documentElement.appendChild($('ytbox'));
 // ---- ajuste automático a la pantalla (TV) ----
 let fitSig=null,fitScale=1;
 function fit(){const w=$('tvwrap');if(!w)return;

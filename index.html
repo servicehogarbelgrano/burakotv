@@ -497,6 +497,7 @@ function musicSync(mz,cmd){const b=$('mzbox');
  const src=mz.pl?(mz.id?h+mz.id+'?list='+mz.pl+'&'+q:h+'videoseries?list='+mz.pl+'&'+q):h+mz.id+'?'+q;
  b.innerHTML='<iframe src="'+src+'" allow="autoplay; encrypted-media" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>';mzFrame=b.firstChild}
 function mzStatus(){const e=$('mzst');if(!e)return;const m=S&&S.music;e.textContent=m?'🎶 Sonando'+(m.q?' · tema '+(m.i+1)+' de '+m.q.length:''):'Sin música'}
+let ytKey=null,ytFrame=null,ytMuted=true;
 function ytSync(y){const b=$('ytbox');
  if(!y){if(ytKey!==null){ytKey=null;ytFrame=null;b.style.display='none';b.innerHTML=''}return}
  const key=y.t+':'+y.id,m=y.mute!==false;

@@ -47,7 +47,7 @@ body.ph #sfxfab{bottom:auto;top:8px}
 body.ph #mzfab{bottom:auto;top:8px;right:118px}
 #sfxfab{position:fixed;right:64px;bottom:10px;z-index:30;width:46px;height:46px;border-radius:50%;padding:0;font-size:20px}
 #ytp{display:none;position:fixed;left:0;right:0;top:0;bottom:0;background:#0b5d3bfa;z-index:60;overflow:auto;padding:20px}
-#mzbox{position:fixed;left:8px;bottom:8px;width:260px;height:160px;z-index:40;border-radius:10px;overflow:hidden;border:2px solid #ffffff55;display:none;background:#000;will-change:transform;transform:translateZ(0);contain:strict}
+#mzbox{isolation:isolate;position:fixed;left:8px;bottom:8px;width:260px;height:160px;z-index:40;border-radius:10px;overflow:hidden;border:2px solid #ffffff55;display:none;background:#000;will-change:transform;transform:translateZ(0);contain:strict}
 #mzbox iframe{width:100%;height:100%;border:0}
 #mzfab{position:fixed;left:10px;bottom:10px;z-index:30;width:46px;height:46px;border-radius:50%;padding:0;font-size:22px}
 #mzp{display:none;position:fixed;left:0;right:0;top:0;bottom:0;background:#0b5d3bfa;z-index:60;overflow:auto;padding:20px}
@@ -81,10 +81,12 @@ body.ph #mzfab{bottom:auto;top:8px;right:118px}
 <div id="mzbox"></div>
 <button id="mzfab" class="s hidden">🎵</button>
 <div id="mzp"><div style="max-width:460px;margin:0 auto"><h2>🎵 Música</h2>
-<p class="muted">Pegá un link de Spotify (canción, álbum o playlist) o de YouTube (video o playlist). Se reproduce en un borde de la tele, con controles para pasar de canción.</p>
+<p class="muted">Pegá un link de Spotify o de YouTube (video o playlist). Si pegás varios links juntos, separados por espacio, podés pasar de uno a otro con ⏭.</p>
 <input id="mzin" placeholder="Link de Spotify o YouTube" autocomplete="off">
 <div class="stack" style="display:flex;flex-direction:column;gap:10px">
 <button id="mzset">Poner / cambiar</button>
+<p id="mzst" class="muted" style="margin:0;text-align:center">Sin música</p>
+<div class="brow"><button id="mzprev" class="s">⏮</button><button id="mzplay" class="s">▶ Play</button><button id="mzpause" class="s">⏸ Pausa</button><button id="mznext" class="s">⏭</button></div>
 <button id="mzoff" class="s">Quitar la música</button>
 <button id="mzclose" class="s">Cerrar</button></div>
 <p class="muted">Con Spotify, si en la tele hay una sesión de Spotify Premium iniciada se escucha la canción entera; si no, se escucha una vista previa corta. La tele puede pedir un primer toque para habilitar el sonido.</p>
@@ -205,11 +207,18 @@ function parseYT(u){u=(u||'').trim();let m;
  if(m=u.match(/youtube\.com\/channel\/(UC[\w-]{22})/))return{t:'c',id:m[1]};
  return null}
 function parseMusic(u){u=(u||'').trim();let m;
- if(m=u.match(/open\.spotify\.com\/(track|album|playlist|episode|show)\/([A-Za-z0-9]+)/))return{t:'sp',kind:m[1],id:m[2]};
- const y=parseYT(u);if(y)return{t:'yt',...y};
+ if(m=u.match(/open\.spotify\.com\/(?:intl-[a-z]+\/)?(track|album|playlist|episode|show)\/([A-Za-z0-9]+)/))return{t:'sp',kind:m[1],id:m[2]};
+ if(m=u.match(/youtube\.com\/.*[?&]list=([\w-]{10,})/)){const v=u.match(/[?&]v=([\w-]{11})/);return{t:'yt',pl:m[1],id:v?v[1]:''}}
+ const y=parseYT(u);if(y)return{...y,t:'yt'};
  return null}
+const parseMusicList=t=>(t||'').split(/[\s,]+/).map(parseMusic).filter(Boolean);
 const A={
- music(url){const m=parseMusic(url);if(!m)return toast('No entendí ese link de Spotify o YouTube');act(s=>{s.music={...m,mute:false}})},
+ music(url){const L=parseMusicList(url);if(!L.length)return toast('No entendí ese link de Spotify o YouTube');act(s=>{s.music={...L[0],mute:false,q:L.length>1?L:null,i:0};s.mzcmd=null})},
+ mzCmd(c){const m=S&&S.music;if(!m)return toast('Primero poné un link de música');
+  if((c==='next'||c==='prev')&&m.t==='sp'&&!m.q)return toast('Spotify no deja saltar dentro de una playlist. Pegá varios links juntos para ir cambiando de tema');
+  act(s=>{const m=s.music;if(!m)return;
+   if((c==='next'||c==='prev')&&m.q){const n=m.q.length,i=(m.i+(c==='next'?1:n-1))%n;s.music={...m.q[i],mute:false,q:m.q,i};return}
+   s.mzcmd={c,n:Date.now()+Math.random()}})},
  musicOff(){act(s=>{s.music=null})},
  sfxToggle(){act(s=>{s.sfxOn=s.sfxOn===false})},
  yt(url){const y=parseYT(url);if(!y)return toast('No entendí ese link de YouTube');act(s=>{s.yt={...y,mute:s.yt?s.yt.mute!==false:false}})},
@@ -384,7 +393,7 @@ function render(s){S=s;$('home').classList.add('hidden');if(drag&&drag.moved)ret
    const ml=n(s)>n(PV),dr=(s.pozo||[]).length>(PV.pozo||[]).length;
    if(ml)sndMeld();if(dr)setTimeout(sndDrop,ml?500:0)}
   PV=s}
-new URLSearchParams(location.search).get('r')?phone(s):(tv(s),botSchedule(s),ytSync(s.yt!==undefined?s.yt:(parseYT(YT0)?{...parseYT(YT0),mute:true}:null)),musicSync(s.music||null))}
+new URLSearchParams(location.search).get('r')?phone(s):(tv(s),botSchedule(s),ytSync(s.yt!==undefined?s.yt:(parseYT(YT0)?{...parseYT(YT0),mute:true}:null)),musicSync(s.music||null,s.mzcmd||null)),mzStatus()}
 
 function home(){$('home').classList.remove('hidden')}
 function bajar(){A.meld([...sel])}
@@ -448,9 +457,10 @@ $('ytset').onclick=()=>{A.yt($('ytin').value);$('ytp').style.display='none'};
 $('ytmute').onclick=()=>A.ytMute();
 $('ytoff').onclick=()=>{A.ytOff();$('ytp').style.display='none'};
 if(new URLSearchParams(location.search).get('r')){$('mzfab').classList.remove('hidden')}
-$('mzfab').onclick=()=>{$('mzp').style.display='block'};
+$('mzfab').onclick=()=>{$('mzp').style.display='block';mzStatus()};
 $('mzclose').onclick=()=>{$('mzp').style.display='none'};
-$('mzset').onclick=()=>{A.music($('mzin').value);$('mzp').style.display='none'};
+$('mzset').onclick=()=>{A.music($('mzin').value)};
+$('mzplay').onclick=()=>A.mzCmd('play');$('mzpause').onclick=()=>A.mzCmd('pause');$('mznext').onclick=()=>A.mzCmd('next');$('mzprev').onclick=()=>A.mzCmd('prev');
 $('mzoff').onclick=()=>{A.musicOff();$('mzp').style.display='none'};
 $('showJoinBtn').onclick=()=>$('joinBox').classList.toggle('hidden');
 $('joinBtn').onclick=()=>goRoom();
@@ -458,16 +468,35 @@ $('rulesBtn').onclick=()=>showRules();
 Object.assign(window,{A,makeRoom,goRoom,showRules,closeRules,rgo,rvoz,sortRack,addTo,bajar,descartar,cortar});
 // ---- canal de YouTube en la TV ----
 let lastYT=null;
-let lastMZ=null;
-function musicSync(mz){const k=mz?JSON.stringify(mz):'';if(k===lastMZ)return;lastMZ=k;const b=$('mzbox');
- if(!mz){b.style.display='none';b.innerHTML='';return}
- let src;
- if(mz.t==='sp')src='https://open.spotify.com/embed/'+mz.kind+'/'+mz.id+'?utm_source=generator&theme=0';
- else src='https://www.youtube.com/embed/'+mz.id+'?autoplay=1&mute='+(mz.mute?1:0)+'&playsinline=1&rel=0&controls=1&modestbranding=1';
- b.innerHTML='<iframe src="'+src+'" allow="autoplay; encrypted-media; clipboard-write" allowfullscreen></iframe>';b.style.display='block'}
-// Video en capa aparte: vive fuera de la app, se crea una sola vez y el juego nunca lo toca.
-// Solo se recarga si cambia el canal/video; silenciar o no se hace sin recargar.
-let ytKey=null,ytFrame=null,ytMuted=true;
+
+let mzKey=null,mzFrame=null,mzInit=false,mzLastN=null;
+let spApi=null,spCtl=null,spLoading=false,spReady=null;
+const spUri=m=>'spotify:'+m.kind+':'+m.id;
+function spEnsure(fn){if(spApi)return fn();spReady=fn;
+ if(!spLoading){spLoading=true;window.onSpotifyIframeApiReady=a=>{spApi=a;if(spReady){const f=spReady;spReady=null;f()}};
+  const sc=document.createElement('script');sc.src='https://open.spotify.com/embed/iframe-api/v1';sc.async=true;document.body.appendChild(sc)}}
+function spShow(m,b){spEnsure(()=>{
+ if(spCtl){try{spCtl.loadUri(spUri(m));setTimeout(()=>{try{spCtl.play()}catch(e){}},700)}catch(e){}return}
+ b.innerHTML='';const h=document.createElement('div');b.appendChild(h);
+ spApi.createController(h,{uri:spUri(m),width:'100%',height:'100%'},c=>{spCtl=c;c.addListener('ready',()=>{try{c.play()}catch(e){}})})})}
+function mzDo(c,mz){
+ if(mz.t==='sp'){if(!spCtl)return;try{c==='pause'?spCtl.pause():(spCtl.resume?spCtl.resume():spCtl.play())}catch(e){}return}
+ const fn={play:'playVideo',pause:'pauseVideo',next:'nextVideo',prev:'previousVideo'}[c];
+ try{mzFrame&&mzFrame.contentWindow.postMessage(JSON.stringify({event:'command',func:fn,args:[]}),'*')}catch(e){}}
+function musicSync(mz,cmd){const b=$('mzbox');
+ const n=cmd?cmd.n:null;
+ if(!mzInit){mzInit=true;mzLastN=n}else if(n!==mzLastN){mzLastN=n;if(n!==null&&mz)mzDo(cmd.c,mz)}
+ const k=mz?mz.t+':'+(mz.kind||'')+':'+(mz.pl||'')+':'+mz.id+':'+(mz.mute?1:0):'';
+ if(k===mzKey)return;mzKey=k;
+ if(!mz){if(spCtl){try{spCtl.destroy()}catch(e){}spCtl=null}mzFrame=null;b.style.display='none';b.innerHTML='';return}
+ b.style.display='block';
+ if(mz.t==='sp'){mzFrame=null;spShow(mz,b);return}
+ if(spCtl){try{spCtl.destroy()}catch(e){}spCtl=null}
+ const q='autoplay=1&mute='+(mz.mute?1:0)+'&playsinline=1&rel=0&controls=1&modestbranding=1&enablejsapi=1&origin='+encodeURIComponent(location.origin);
+ const h='https://www.youtube-nocookie.com/embed/';
+ const src=mz.pl?(mz.id?h+mz.id+'?list='+mz.pl+'&'+q:h+'videoseries?list='+mz.pl+'&'+q):h+mz.id+'?'+q;
+ b.innerHTML='<iframe src="'+src+'" allow="autoplay; encrypted-media" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>';mzFrame=b.firstChild}
+function mzStatus(){const e=$('mzst');if(!e)return;const m=S&&S.music;e.textContent=m?'🎶 Sonando'+(m.q?' · tema '+(m.i+1)+' de '+m.q.length:''):'Sin música'}
 function ytSync(y){const b=$('ytbox');
  if(!y){if(ytKey!==null){ytKey=null;ytFrame=null;b.style.display='none';b.innerHTML=''}return}
  const key=y.t+':'+y.id,m=y.mute!==false;
@@ -479,7 +508,7 @@ function ytSync(y){const b=$('ytbox');
   ytFrame=b.firstChild;b.style.display='block';return}
  if(m!==ytMuted){ytMuted=m;try{ytFrame.contentWindow.postMessage(JSON.stringify({event:'command',func:m?'mute':'unMute',args:[]}),'*')}catch(e){}}}
 // el contenedor del video cuelga de <html>, fuera del <body> que redibuja el juego
-document.documentElement.appendChild($('ytbox'));
+document.documentElement.appendChild($('ytbox'));document.documentElement.appendChild($('mzbox'));
 // ---- ajuste automático a la pantalla (TV) ----
 let fitSig=null,fitScale=1;
 function fit(){const w=$('tvwrap');if(!w)return;
